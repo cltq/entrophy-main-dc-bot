@@ -7,6 +7,7 @@ import discord
 from discord.ext import commands, tasks
 from discord import app_commands
 from utils.helpers import get_uptime
+import aiohttp
 
 bangkok_timezone = pytz.timezone('Asia/Bangkok')
 
@@ -80,6 +81,182 @@ class Owner(commands.Cog):
             await ctx.send("❌ You need Administrator permissions to use this command.")
         else:
             await ctx.send(f"❌ An error occurred: {error}")
+
+    # ---------- BOT PROFILE MANAGEMENT ----------
+    @commands.command(name="setname", help="Change the bot's username")
+    @commands.is_owner()
+    async def set_name(self, ctx, *, name: str):
+        """Change the bot's username"""
+        try:
+            await self.bot.user.edit(username=name)
+            await ctx.send(f"✅ Bot username changed to: `{name}`")
+        except discord.HTTPException as e:
+            if e.status == 429:
+                await ctx.send("❌ Rate limited! You can only change the bot's username twice per hour.")
+            else:
+                await ctx.send(f"❌ Failed to change username: {e}")
+        except Exception as e:
+            await ctx.send(f"❌ An error occurred: {e}")
+
+    @set_name.error
+    async def set_name_error(self, ctx, error):
+        if isinstance(error, commands.NotOwner):
+            await ctx.send("❌ Only the bot owner can use this command.")
+
+    @commands.command(name="setavatar", help="Change the bot's profile picture")
+    @commands.is_owner()
+    async def set_avatar(self, ctx, url: str = None):
+        """
+        Change the bot's profile picture
+        Usage: !setavatar <image_url> or attach an image
+        """
+        try:
+            # Check if image is attached
+            if ctx.message.attachments:
+                image_url = ctx.message.attachments[0].url
+            elif url:
+                image_url = url
+            else:
+                await ctx.send("❌ Please provide an image URL or attach an image.")
+                return
+
+            # Download the image
+            async with aiohttp.ClientSession() as session:
+                async with session.get(image_url) as resp:
+                    if resp.status != 200:
+                        await ctx.send("❌ Failed to download the image.")
+                        return
+                    image_data = await resp.read()
+
+            # Set the avatar
+            await self.bot.user.edit(avatar=image_data)
+            await ctx.send("✅ Bot avatar updated successfully!")
+
+        except discord.HTTPException as e:
+            if e.status == 429:
+                await ctx.send("❌ Rate limited! You can only change the bot's avatar a few times per hour.")
+            else:
+                await ctx.send(f"❌ Failed to change avatar: {e}")
+        except Exception as e:
+            await ctx.send(f"❌ An error occurred: {e}")
+
+    @set_avatar.error
+    async def set_avatar_error(self, ctx, error):
+        if isinstance(error, commands.NotOwner):
+            await ctx.send("❌ Only the bot owner can use this command.")
+
+    @commands.command(name="setbio", help="Change the bot's profile description")
+    @commands.is_owner()
+    async def set_bio(self, ctx, *, bio: str):
+        """
+        Change the bot's profile description (About Me)
+        Note: This requires the bot to have a premium subscription
+        """
+        try:
+            await self.bot.user.edit(bio=bio)
+            await ctx.send(f"✅ Bot bio updated to:\n```{bio}```")
+        except discord.HTTPException as e:
+            if "premium" in str(e).lower():
+                await ctx.send("❌ Setting a bio requires the bot to have Discord premium (bot subscription).")
+            else:
+                await ctx.send(f"❌ Failed to change bio: {e}")
+        except Exception as e:
+            await ctx.send(f"❌ An error occurred: {e}")
+
+    @set_bio.error
+    async def set_bio_error(self, ctx, error):
+        if isinstance(error, commands.NotOwner):
+            await ctx.send("❌ Only the bot owner can use this command.")
+
+    @commands.command(name="setbanner", help="Change the bot's profile banner")
+    @commands.is_owner()
+    async def set_banner(self, ctx, url: str = None):
+        """
+        Change the bot's profile banner
+        Usage: !setbanner <image_url> or attach an image
+        Note: This requires the bot to have a premium subscription
+        """
+        try:
+            # Check if image is attached
+            if ctx.message.attachments:
+                image_url = ctx.message.attachments[0].url
+            elif url:
+                image_url = url
+            else:
+                await ctx.send("❌ Please provide an image URL or attach an image.")
+                return
+
+            # Download the image
+            async with aiohttp.ClientSession() as session:
+                async with session.get(image_url) as resp:
+                    if resp.status != 200:
+                        await ctx.send("❌ Failed to download the image.")
+                        return
+                    image_data = await resp.read()
+
+            # Set the banner
+            await self.bot.user.edit(banner=image_data)
+            await ctx.send("✅ Bot banner updated successfully!")
+
+        except discord.HTTPException as e:
+            if "premium" in str(e).lower():
+                await ctx.send("❌ Setting a banner requires the bot to have Discord premium (bot subscription).")
+            else:
+                await ctx.send(f"❌ Failed to change banner: {e}")
+        except Exception as e:
+            await ctx.send(f"❌ An error occurred: {e}")
+
+    @set_banner.error
+    async def set_banner_error(self, ctx, error):
+        if isinstance(error, commands.NotOwner):
+            await ctx.send("❌ Only the bot owner can use this command.")
+
+    @commands.command(name="removebanner", help="Remove the bot's profile banner")
+    @commands.is_owner()
+    async def remove_banner(self, ctx):
+        """Remove the bot's profile banner"""
+        try:
+            await self.bot.user.edit(banner=None)
+            await ctx.send("✅ Bot banner removed successfully!")
+        except discord.HTTPException as e:
+            await ctx.send(f"❌ Failed to remove banner: {e}")
+        except Exception as e:
+            await ctx.send(f"❌ An error occurred: {e}")
+
+    @remove_banner.error
+    async def remove_banner_error(self, ctx, error):
+        if isinstance(error, commands.NotOwner):
+            await ctx.send("❌ Only the bot owner can use this command.")
+
+    @commands.command(name="botinfo", help="Display current bot profile information")
+    @commands.is_owner()
+    async def bot_info(self, ctx):
+        """Display current bot profile information"""
+        user = self.bot.user
+        embed = discord.Embed(
+            title="🤖 Bot Profile Information",
+            color=discord.Color.blue()
+        )
+        embed.set_thumbnail(url=user.display_avatar.url)
+
+        if user.banner:
+            embed.set_image(url=user.banner.url)
+
+        embed.add_field(name="Username", value=user.name, inline=True)
+        embed.add_field(name="ID", value=user.id, inline=True)
+        embed.add_field(name="Discriminator", value=user.discriminator if user.discriminator != "0" else "None", inline=True)
+
+        # Note: Bio might not be accessible via self.bot.user
+        embed.add_field(name="Created At", value=user.created_at.strftime("%Y-%m-%d %H:%M:%S"), inline=False)
+        embed.add_field(name="Servers", value=len(self.bot.guilds), inline=True)
+        embed.add_field(name="Users", value=sum(g.member_count for g in self.bot.guilds), inline=True)
+
+        await ctx.send(embed=embed)
+
+    @bot_info.error
+    async def bot_info_error(self, ctx, error):
+        if isinstance(error, commands.NotOwner):
+            await ctx.send("❌ Only the bot owner can use this command.")
 
     # ---------- SYNC COMMAND ----------
     @commands.command(name="sync", help="Sync slash commands")
