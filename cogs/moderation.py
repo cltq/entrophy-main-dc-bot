@@ -10,9 +10,9 @@ class Moderation(commands.Cog):
         self.user_warnings_data = {}
 
     def has_moderation_access():
-        """Custom check to verify if user has 'Moderation Access' role"""
+        """Custom check to verify if user has 'Moderation Access' role or is owner"""
         async def predicate(ctx):
-            role = discord.utils.get(ctx.guild.roles, name="Moderation Access")
+            role = discord.utils.get(ctx.guild.roles, name="Moderation Access") 
             if role in ctx.author.roles:
                 return True
             await ctx.send("❌ You need the 'Moderation Access' role to use this command.")

@@ -9,26 +9,21 @@ systemPlatform = platform.system()
 
 def systemPlatform_clear_delay():
     time.sleep(1)
-
-def infoClearer():
     if systemPlatform == ('Windows'):
-     print(f'Your system is identified as {systemPlatform}, Clearing the Prompt')
-     systemPlatform_clear_delay()
      os.system('cls')
      print(f'Your system is identified as {systemPlatform}, Cleared the Prompt')
     elif platform.system == ('Darwin'):
-     print(f'Your system is identified as {systemPlatform}, Clearing the Terminal')
-     systemPlatform_clear_delay()
      os.system('clear')
      print(f'Your system is identified as {systemPlatform}, Cleared the Terminal')
     else:
-     print(f"Your system is identified as {systemPlatform}, Clearing the Terminal")
-     systemPlatform_clear_delay()
      os.system('clear')
      print(f"Your system is identified as {systemPlatform}, Cleared the Terminal")
 
-# infoClearer()
+
+# systemPlatform_clear_delay()
+
 load_dotenv()
+
 TOKEN = os.getenv("DISCORD_TOKEN")
 OWNER_ID = int(os.getenv("BOT_OWNER_ID"))
 
@@ -57,9 +52,6 @@ async def on_command_error(ctx, error):
     else:
         await ctx.send(f"❌ Error: `{error}`")
         raise error
-
-# Set the custom help command
-# bot.help_command = CustomHelp()
 
 # ---------- UTIL FUNCTIONS ----------
 async def sync_slash():
