@@ -20,11 +20,26 @@ class ClientCog(commands.Cog):
         return interaction.user.id == self.owner_id
 
     @app_commands.command(name="say", description="Make the bot send a message (Owner only)")
-    @app_commands.describe(message="The message to send")
-    async def say(self, interaction: discord.Interaction, message: str):
+    @app_commands.describe(
+        message="The message to send",
+        channel_id="Channel ID where to send (optional - leave empty for current channel)",
+        user_id="User ID to DM (optional - for sending DMs)"
+    )
+    async def say(
+        self,
+        interaction: discord.Interaction,
+        message: str,
+        channel_id: str = None,
+        user_id: str = None
+    ):
         """
-        Send a message through the bot
+        Send a message through the bot to any channel or DM
         Only the bot owner can use this command
+
+        Examples:
+        - /say message:Hello - Sends to current channel
+        - /say message:Hello channel_id:123456789 - Sends to specific channel
+        - /say message:Hello user_id:123456789 - Sends as DM to user
         """
         # Check if user is the owner
         if not await self.is_owner(interaction):
@@ -34,39 +49,123 @@ class ClientCog(commands.Cog):
             )
             return
 
-        # Check if we're in a guild channel
-        if not interaction.guild:
-            await interaction.response.send_message(
-                "❌ This command can only be used in a server.",
-                ephemeral=True
-            )
-            return
-
-        # Check if bot has permission to send messages
-        if not interaction.channel.permissions_for(interaction.guild.me).send_messages:
-            await interaction.response.send_message(
-                "❌ I don't have permission to send messages in this channel.",
-                ephemeral=True
-            )
-            return
+        # Defer response as fetching channels/users might take time
+        await interaction.response.defer(ephemeral=True)
 
         try:
-            # Send the message
-            await interaction.channel.send(message)
+            target = None
+            target_description = ""
 
-            # Confirm to the owner (only they can see this)
-            await interaction.response.send_message(
-                f"✅ Message sent successfully!",
-                ephemeral=True
-            )
-        except discord.Forbidden:
-            await interaction.response.send_message(
-                "❌ I don't have permission to send messages here.",
-                ephemeral=True
-            )
+            # Priority 1: Send to specific user (DM)
+            if user_id:
+                try:
+                    user_id_int = int(user_id)
+                    user = await self.bot.fetch_user(user_id_int)
+                    target = user
+                    target_description = f"DM to {user.name}"
+                except ValueError:
+                    await interaction.followup.send(
+                        "❌ Invalid user ID format. Must be numbers only.",
+                        ephemeral=True
+                    )
+                    return
+                except discord.NotFound:
+                    await interaction.followup.send(
+                        f"❌ User with ID {user_id} not found.",
+                        ephemeral=True
+                    )
+                    return
+                except Exception as e:
+                    await interaction.followup.send(
+                        f"❌ Error fetching user: {str(e)}",
+                        ephemeral=True
+                    )
+                    return
+
+            # Priority 2: Send to specific channel
+            elif channel_id:
+                try:
+                    channel_id_int = int(channel_id)
+                    channel = self.bot.get_channel(channel_id_int)
+
+                    # If channel not in cache, try fetching it
+                    if not channel:
+                        channel = await self.bot.fetch_channel(channel_id_int)
+
+                    target = channel
+
+                    if isinstance(channel, discord.TextChannel):
+                        target_description = f"#{channel.name} in {channel.guild.name}"
+                    elif isinstance(channel, discord.DMChannel):
+                        target_description = f"DM with {channel.recipient.name}"
+                    elif isinstance(channel, discord.GroupChannel):
+                        target_description = f"Group: {channel.name}"
+                    else:
+                        target_description = f"Channel ID: {channel_id}"
+
+                except ValueError:
+                    await interaction.followup.send(
+                        "❌ Invalid channel ID format. Must be numbers only.",
+                        ephemeral=True
+                    )
+                    return
+                except discord.NotFound:
+                    await interaction.followup.send(
+                        f"❌ Channel with ID {channel_id} not found or bot doesn't have access.",
+                        ephemeral=True
+                    )
+                    return
+                except discord.Forbidden:
+                    await interaction.followup.send(
+                        f"❌ Bot doesn't have permission to access channel {channel_id}.",
+                        ephemeral=True
+                    )
+                    return
+                except Exception as e:
+                    await interaction.followup.send(
+                        f"❌ Error fetching channel: {str(e)}",
+                        ephemeral=True
+                    )
+                    return
+
+            # Priority 3: Send to current channel
+            else:
+                if not interaction.channel:
+                    await interaction.followup.send(
+                        "❌ No channel context. Please specify channel_id or user_id.",
+                        ephemeral=True
+                    )
+                    return
+                target = interaction.channel
+
+                if interaction.guild:
+                    target_description = f"#{interaction.channel.name} in {interaction.guild.name}"
+                else:
+                    target_description = "this channel"
+
+            # Send the message
+            try:
+                await target.send(message)
+
+                # Confirm to the owner
+                await interaction.followup.send(
+                    f"✅ Message sent successfully to {target_description}!",
+                    ephemeral=True
+                )
+            except discord.Forbidden:
+                await interaction.followup.send(
+                    f"❌ I don't have permission to send messages to {target_description}.",
+                    ephemeral=True
+                )
+            except discord.HTTPException as e:
+                await interaction.followup.send(
+                    f"❌ Failed to send message: {str(e)}",
+                    ephemeral=True
+                )
+
         except Exception as e:
-            await interaction.response.send_message(
-                f"❌ Error sending message: {str(e)}",
+            await interaction.followup.send(
+                f"❌ Unexpected error: {str(e)}",
                 ephemeral=True
             )
 
