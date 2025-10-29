@@ -230,7 +230,7 @@ class Owner(commands.Cog):
 
     @commands.command(name="botinfo", help="Display current bot profile information")
     @commands.is_owner()
-    async def bot_info(self, ctx):
+    async def profile_info(self, ctx):
         """Display current bot profile information"""
         user = self.bot.user
         embed = discord.Embed(
@@ -253,8 +253,8 @@ class Owner(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @bot_info.error
-    async def bot_info_error(self, ctx, error):
+    @profile_info.error
+    async def profile_info_error(self, ctx, error):
         if isinstance(error, commands.NotOwner):
             await ctx.send("❌ Only the bot owner can use this command.")
 
