@@ -105,7 +105,7 @@ class Utility(commands.Cog):
 
         # Basic Info
         embed.add_field(name="👤 Username", value=f"{user.name}", inline=True)
-        embed.add_field(name="🆔 User ID", value=f"`||{user.id}||`", inline=True)
+        embed.add_field(name="🆔 User ID", value=f"||`{user.id}`||", inline=True)
         embed.add_field(name="🤖 Bot", value="Yes" if user.bot else "No", inline=True)
 
         # Dates
