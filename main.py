@@ -27,7 +27,10 @@ load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 OWNER_ID = int(os.getenv("BOT_OWNER_ID"))
 
-intents = discord.Intents.all()
+intents = discord.Intents.default()
+intents.message_content = True  # Required for reading message content (e.g. !commands)
+intents.members = True           # Required for accessing member info or DMing them
+intents.dm_messages = True       # Needed for handling DMs properly
 bot = commands.Bot(command_prefix=".", intents=intents)
 
 # for tracking launch time
