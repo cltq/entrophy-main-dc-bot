@@ -16,6 +16,7 @@ class Owner(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.cycle_paused = False
         # Status cycler
         self.statuses = cycle([
             lambda: f"Uptime: {get_uptime(getattr(self.bot, 'launch_time', None))}",
@@ -32,6 +33,8 @@ class Owner(commands.Cog):
     # ---------- STATUS CYCLER ----------
     @tasks.loop(seconds=5)
     async def status_cycle(self):
+        if self.cycle_paused:
+            return
         try:
             next_status = next(self.statuses)()
             await self.bot.change_presence(
@@ -49,19 +52,20 @@ class Owner(commands.Cog):
     @commands.command(name="status", help="Change bot presence manually (Admin only)")
     @commands.is_owner()
     async def change_status(self, ctx, *, text: str):
+        self.cycle_paused = True
         await self.bot.change_presence(activity=discord.Game(text))
-        await ctx.send(f"✅ Status changed to: `{text}`")
+        await ctx.send(f"✅ Status changed to: `{text}`\n⏸️ Auto-cycling paused. Use `!resumecycle` to resume.")
 
     @change_status.error
     async def change_status_error(self, ctx, error):
-        if isinstance(error, commands.MissingPermissions):
-            await ctx.send("❌ You need Administrator permissions to use this command.")
+        if isinstance(error, commands.NotOwner):
+            await ctx.send("❌ Only the bot owner can use this command.")
         else:
             await ctx.send(f"❌ An error occurred: {error}")
 
     @commands.command(name="setstate", help="Change bot status mode (online/idle/dnd/invisible)")
     @commands.is_owner()
-    async def set_state(self, ctx, state: str):
+    async def set_bot_state(self, ctx, state: str):
         states = {
             "online": discord.Status.online,
             "idle": discord.Status.idle,
@@ -72,15 +76,38 @@ class Owner(commands.Cog):
             await ctx.send("⚠️ Invalid state. Use: online, idle, dnd, invisible.")
             return
 
+        self.cycle_paused = True
         await self.bot.change_presence(status=states[state.lower()])
-        await ctx.send(f"✅ Bot status set to `{state}`")
+        await ctx.send(f"✅ Bot status set to `{state}`\n⏸️ Auto-cycling paused. Use `!resumecycle` to resume.")
 
-    @set_state.error
-    async def set_state_error(self, ctx, error):
-        if isinstance(error, commands.MissingPermissions):
-            await ctx.send("❌ You need Administrator permissions to use this command.")
+    @set_bot_state.error
+    async def set_bot_state_error(self, ctx, error):
+        if isinstance(error, commands.NotOwner):
+            await ctx.send("❌ Only the bot owner can use this command.")
         else:
             await ctx.send(f"❌ An error occurred: {error}")
+
+    @commands.command(name="resumecycle", help="Resume automatic status cycling")
+    @commands.is_owner()
+    async def resume_cycle(self, ctx):
+        self.cycle_paused = False
+        await ctx.send("▶️ Status auto-cycling resumed!")
+
+    @resume_cycle.error
+    async def resume_cycle_error(self, ctx, error):
+        if isinstance(error, commands.NotOwner):
+            await ctx.send("❌ Only the bot owner can use this command.")
+
+    @commands.command(name="pausecycle", help="Pause automatic status cycling")
+    @commands.is_owner()
+    async def pause_cycle(self, ctx):
+        self.cycle_paused = True
+        await ctx.send("⏸️ Status auto-cycling paused!")
+
+    @pause_cycle.error
+    async def pause_cycle_error(self, ctx, error):
+        if isinstance(error, commands.NotOwner):
+            await ctx.send("❌ Only the bot owner can use this command.")
 
     # ---------- BOT PROFILE MANAGEMENT ----------
     @commands.command(name="setname", help="Change the bot's username")
