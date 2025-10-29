@@ -76,9 +76,9 @@ class Owner(commands.Cog):
             await ctx.send("⚠️ Invalid state. Use: online, idle, dnd, invisible.")
             return
 
-        self.cycle_paused = True
+        self.cycle_paused = false
         await self.bot.change_presence(status=states[state.lower()])
-        await ctx.send(f"✅ Bot status set to `{state}`\n⏸️ Auto-cycling paused. Use `!resumecycle` to resume.")
+        await ctx.send(f"✅ Bot online status set to `{state}`\n⏸️ Auto-cycling paused. Use `!resumecycle` to resume.")
 
     @set_bot_state.error
     async def set_bot_state_error(self, ctx, error):
