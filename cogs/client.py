@@ -7,7 +7,7 @@ class Client(commands.Cog):
         self.bot = bot
         # Add authorized user IDs here
         self.authorized_users = [
-            # 123456789012345678,  # Example user ID
+            969088519161139270
             # Add more user IDs as needed
         ]
 
