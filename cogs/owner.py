@@ -76,9 +76,9 @@ class Owner(commands.Cog):
             await ctx.send("⚠️ Invalid state. Use: online, idle, dnd, invisible.")
             return
 
-        self.cycle_paused = True
+        self.cycle_paused = False
         await self.bot.change_presence(status=states[state.lower()])
-        await ctx.send(f"✅ Bot status set to `{state}`\n⏸️ Auto-cycling paused. Use `!resumecycle` to resume.")
+        await ctx.send(f"✅ Bot online status set to `{state}`\n⏸️ Auto-cycling paused. Use `!resumecycle` to resume.")
 
     @set_bot_state.error
     async def set_bot_state_error(self, ctx, error):
@@ -101,8 +101,8 @@ class Owner(commands.Cog):
     @commands.command(name="pausecycle", help="Pause automatic status cycling")
     @commands.is_owner()
     async def pause_cycle(self, ctx):
-        self.cycle_paused = False
-        await ctx.send("⏸️ Status auto-cycling paused! (not paused!)")
+        self.cycle_paused = True
+        await ctx.send("⏸️ Status auto-cycling paused!")
 
     @pause_cycle.error
     async def pause_cycle_error(self, ctx, error):
