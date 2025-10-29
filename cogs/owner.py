@@ -76,9 +76,9 @@ class Owner(commands.Cog):
             await ctx.send("⚠️ Invalid state. Use: online, idle, dnd, invisible.")
             return
 
-        self.cycle_paused = false
+        self.cycle_paused = True
         await self.bot.change_presence(status=states[state.lower()])
-        await ctx.send(f"✅ Bot online status set to `{state}`\n⏸️ Auto-cycling paused. Use `!resumecycle` to resume.")
+        await ctx.send(f"✅ Bot status set to `{state}`\n⏸️ Auto-cycling paused. Use `!resumecycle` to resume.")
 
     @set_bot_state.error
     async def set_bot_state_error(self, ctx, error):
@@ -101,8 +101,8 @@ class Owner(commands.Cog):
     @commands.command(name="pausecycle", help="Pause automatic status cycling")
     @commands.is_owner()
     async def pause_cycle(self, ctx):
-        self.cycle_paused = True
-        await ctx.send("⏸️ Status auto-cycling paused!")
+        self.cycle_paused = False
+        await ctx.send("⏸️ Status auto-cycling paused! (not paused!)")
 
     @pause_cycle.error
     async def pause_cycle_error(self, ctx, error):
@@ -169,29 +169,6 @@ class Owner(commands.Cog):
 
     @set_avatar.error
     async def set_avatar_error(self, ctx, error):
-        if isinstance(error, commands.NotOwner):
-            await ctx.send("❌ Only the bot owner can use this command.")
-
-    @commands.command(name="setbio", help="Change the bot's profile description")
-    @commands.is_owner()
-    async def set_bio(self, ctx, *, bio: str):
-        """
-        Change the bot's profile description (About Me)
-        Note: This requires the bot to have a premium subscription
-        """
-        try:
-            await self.bot.user.edit(bio=bio)
-            await ctx.send(f"✅ Bot bio updated to:\n```{bio}```")
-        except discord.HTTPException as e:
-            if "premium" in str(e).lower():
-                await ctx.send("❌ Setting a bio requires the bot to have Discord premium (bot subscription).")
-            else:
-                await ctx.send(f"❌ Failed to change bio: {e}")
-        except Exception as e:
-            await ctx.send(f"❌ An error occurred: {e}")
-
-    @set_bio.error
-    async def set_bio_error(self, ctx, error):
         if isinstance(error, commands.NotOwner):
             await ctx.send("❌ Only the bot owner can use this command.")
 
