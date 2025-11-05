@@ -54,7 +54,7 @@ class Owner(commands.Cog):
     async def change_status(self, ctx, *, text: str):
         self.cycle_paused = True
         await self.bot.change_presence(activity=discord.Game(text))
-        await ctx.send(f"✅ Status changed to: `{text}`\n⏸️ Auto-cycling paused. Use `!resumecycle` to resume.")
+        await ctx.send(f"✅ Status changed to: `{text}`\n⏸️ Auto-cycling paused. Use `eresumecycle` to resume.")
 
     @change_status.error
     async def change_status_error(self, ctx, error):
@@ -78,7 +78,7 @@ class Owner(commands.Cog):
 
         self.cycle_paused = True
         await self.bot.change_presence(status=states[state.lower()])
-        await ctx.send(f"✅ Bot online status set to `{state}`\n⏸️ Auto-cycling paused. Use `!resumecycle` to resume.")
+        await ctx.send(f"✅ Bot online status set to `{state}`\n⏸️ Auto-cycling paused. Use `e!resumecycle` to resume.")
 
     @set_bot_state.error
     async def set_bot_state_error(self, ctx, error):
@@ -276,11 +276,11 @@ class Owner(commands.Cog):
         Sync slash commands to Discord.
 
         Usage:
-        - !sync -> Sync globally
-        - !sync current -> Sync to current guild
-        - !sync global -> Copy global commands to current guild
-        - !sync remove -> Remove all commands from current guild
-        - !sync [guild_id] -> Sync to specific guild(s)
+        - e!sync -> Sync globally
+        - e!sync current -> Sync to current guild
+        - e!sync global -> Copy global commands to current guild
+        - e!sync remove -> Remove all commands from current guild
+        - e!sync [guild_id] -> Sync to specific guild(s)
         """
         if not guilds:
             if spec == "current":

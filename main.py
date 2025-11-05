@@ -31,7 +31,7 @@ intents = discord.Intents.default()
 intents.message_content = True  # Required for reading message content (e.g. !commands)
 intents.members = True           # Required for accessing member info or DMing them
 intents.dm_messages = True       # Needed for handling DMs properly
-bot = commands.Bot(command_prefix=".", intents=intents)
+bot = commands.Bot(command_prefix="e!", intents=intents)
 
 # for tracking launch time
 bot.launch_time = datetime.datetime.now(datetime.timezone.utc)
