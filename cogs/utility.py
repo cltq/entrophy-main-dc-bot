@@ -94,31 +94,63 @@ class Utility(commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     async def _create_userinfo_embed(self, user: discord.User, member: discord.Member, requester: discord.User):
-        """Helper method to create userinfo embed"""
-        embed = discord.Embed(
-            title=f"User Information - {user}",
-            color=member.color if member and member.color != discord.Color.default() else discord.Color.blue(),
-            timestamp=datetime.datetime.now(bangkok_timezone)
-        )
+    embed = discord.Embed(
+        title=f"User Information - {user}",
+        color=member.color if member and member.color != discord.Color.default() else discord.Color.blue(),
+        timestamp=datetime.datetime.now(bangkok_timezone)
+    )
 
-        embed.set_thumbnail(url=user.display_avatar.url)
+    embed.set_thumbnail(url=user.display_avatar.url)
 
-        # Basic Info
-        embed.add_field(name="👤 Username", value=f"{user.name}", inline=True)
-        embed.add_field(name="🆔 User ID", value=f"||`{user.id}`||", inline=True)
-        embed.add_field(name="🤖 Bot", value="Yes" if user.bot else "No", inline=True)
+    # ========= BASIC INFO =========
+    embed.add_field(name="👤 Username", value=f"{user.name}", inline=True)
+    embed.add_field(name="🆔 User ID", value=f"||`{user.id}`||", inline=True)
+    embed.add_field(name="🤖 Bot", value="Yes" if user.bot else "No", inline=True)
 
-        # Dates
-        created_at = discord.utils.format_dt(user.created_at, style='F')
-        created_at_relative = discord.utils.format_dt(user.created_at, style='R')
+    # ========= ACCOUNT CREATION =========
+    created_at = discord.utils.format_dt(user.created_at, style='F')
+    created_at_relative = discord.utils.format_dt(user.created_at, style='R')
+    embed.add_field(
+        name="📅 Account Created",
+        value=f"{created_at}\n{created_at_relative}",
+        inline=False
+    )
+
+    # ========= USER BADGES =========
+    if hasattr(user, "public_flags"):
+        flags = user.public_flags
+        badge_map = {
+            "staff": "👑 Discord Staff",
+            "partner": "💎 Partnered Server Owner",
+            "hypesquad": "🎉 HypeSquad",
+            "hypesquad_bravery": "🦁 HypeSquad Bravery",
+            "hypesquad_brilliance": "🧠 HypeSquad Brilliance",
+            "hypesquad_balance": "⚖️ HypeSquad Balance",
+            "bug_hunter": "🐛 Bug Hunter",
+            "bug_hunter_level_2": "🔧 Bug Hunter Level 2",
+            "early_supporter": "🌟 Early Supporter",
+            "verified_bot": "🤖 Verified Bot",
+            "verified_bot_developer": "🏅 Early Verified Developer",
+            "active_developer": "🛠 Active Developer",
+            "discord_certified_moderator": "🛡 Certified Moderator"
+        }
+
+        # Get list of activated badges
+        active_badges = [
+            emoji for flag, emoji in badge_map.items()
+            if getattr(flags, flag, False)
+        ]
+
         embed.add_field(
-            name="📅 Account Created",
-            value=f"{created_at}\n{created_at_relative}",
+            name="🏅 Badges",
+            value="\n".join(active_badges) if active_badges else "None",
             inline=False
         )
 
-        # Only show server-specific info if in a guild and member exists
-        if member and member.joined_at:
+    # ========= GUILD-SPECIFIC INFO =========
+    if member:
+        # Joined Server
+        if member.joined_at:
             joined_at = discord.utils.format_dt(member.joined_at, style='F')
             joined_at_relative = discord.utils.format_dt(member.joined_at, style='R')
             embed.add_field(
@@ -127,40 +159,56 @@ class Utility(commands.Cog):
                 inline=False
             )
 
-        # Roles (only in guilds)
-        if member:
-            roles = [role.mention for role in member.roles[1:]]  # Skip @everyone
-            if roles:
-                embed.add_field(
-                    name=f"🎭 Roles ({len(roles)})",
-                    value=" ".join(roles) if len(roles) <= 10 else f"{' '.join(roles[:10])} and {len(roles) - 10} more...",
-                    inline=False
-                )
-
-            # Status and Activity (only in guilds)
-            status_emoji = {
-                discord.Status.online: "🟢 Online",
-                discord.Status.idle: "🟡 Idle",
-                discord.Status.dnd: "🔴 Do Not Disturb",
-                discord.Status.offline: "⚫ Offline"
-            }
+        # Roles
+        roles = [role.mention for role in member.roles[1:]]
+        if roles:
             embed.add_field(
-                name="📡 Status",
-                value=status_emoji.get(member.status, "❓ Unknown"),
+                name=f"🎭 Roles ({len(roles)})",
+                value=" ".join(roles) if len(roles) <= 10 else f"{' '.join(roles[:10])} and {len(roles)-10} more...",
+                inline=False
+            )
+
+        # Status
+        status_emoji = {
+            discord.Status.online: "🟢 Online",
+            discord.Status.idle: "🟡 Idle",
+            discord.Status.dnd: "🔴 Do Not Disturb",
+            discord.Status.offline: "⚫ Offline"
+        }
+        embed.add_field(
+            name="📡 Status",
+            value=status_emoji.get(member.status, "❓ Unknown"),
+            inline=True
+        )
+
+        # Top Role
+        if member.top_role.name != "@everyone":
+            embed.add_field(
+                name="⭐ Top Role",
+                value=member.top_role.mention,
                 inline=True
             )
 
-            # Top Role (only in guilds)
-            if member.top_role.name != "@everyone":
-                embed.add_field(
-                    name="⭐ Top Role",
-                    value=member.top_role.mention,
-                    inline=True
-                )
+        # ========= GUILD TAG =========
+        guild_tag = None
 
-        embed.set_footer(text=f"Requested by {requester}", icon_url=requester.display_avatar.url)
+        if interaction.guild.owner_id == user.id:
+            guild_tag = "👑 Server Owner"
+        elif member.premium_since:
+            guild_tag = "💗 Server Booster"
+        elif member.nick:
+            guild_tag = f"🏷 Nickname: `{member.nick}`"
 
-        return embed
+        embed.add_field(
+            name="🔖 Guild Tag",
+            value=guild_tag if guild_tag else "None",
+            inline=False
+        )
+
+    # Footer
+    embed.set_footer(text=f"Requested by {requester}", icon_url=requester.display_avatar.url)
+
+    return embed
 
 async def setup(bot):
     await bot.add_cog(Utility(bot))
