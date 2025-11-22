@@ -94,11 +94,11 @@ class Utility(commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     async def _create_userinfo_embed(self, user: discord.User, member: discord.Member, requester: discord.User):
-    embed = discord.Embed(
-        title=f"User Information - {user}",
-        color=member.color if member and member.color != discord.Color.default() else discord.Color.blue(),
-        timestamp=datetime.datetime.now(bangkok_timezone)
-    )
+        embed = discord.Embed(
+            title=f"User Information - {user}",
+            color=member.color if member and member.color != discord.Color.default() else discord.Color.blue(),
+            timestamp=datetime.datetime.now(bangkok_timezone)
+        )
 
     embed.set_thumbnail(url=user.display_avatar.url)
 
