@@ -16,6 +16,9 @@ class Admin(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    async def is_owner_interaction(interaction: discord.Interaction) -> bool:
+        return await interaction.client.is_owner(interaction.user)
+
     def is_admin_or_owner():
         """Check if user is admin or bot owner."""
         async def predicate(ctx):

@@ -2,44 +2,51 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-class SendAnywhere(commands.Cog):
-    """Cog that lets users make the bot send messages anywhere."""
-
+class Say(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # Define the /send command
-    @app_commands.command(
-        name="send",
-        description="Send a message in the current channel or DM a user."
-    )
-    @app_commands.describe(
-        target_user="(Optional) The user to DM (leave empty to send in this channel)",
-        message="The message content to send."
-    )
-    async def send(
-        self,
-        interaction: discord.Interaction,
-        message: str,
-        target_user: discord.User | None = None
-    ):
-        """Send message to current channel or as DM"""
-        await interaction.response.defer(ephemeral=True)
+    @discord.app_commands.command(name="say", description="Say something anywhere.")
+    @app_commands.describe(message="The message the bot will send publicly.")
+    @discord.app_commands.allowed_installs(guilds=True, users=True)
+    @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+    async def say(self, interaction: discord.Interaction, message: str):
 
-        # If a user is provided → send a DM
-        if target_user:
+        # If the command is used in DM
+        if isinstance(interaction.channel, discord.DMChannel):
+            # Send normal (non-ephemeral) success message
+            await interaction.response.send_message(":white_check_mark: Message sent Successfully.", ephemeral=True)
+            # Then send the message in the DM as a follow-up (no mentions)
             try:
-                await target_user.send(message)
-                await interaction.followup.send(f"✅ Message sent to {target_user.display_name} via DM.")
-            except discord.Forbidden:
-                await interaction.followup.send(f"❌ I don't have permission to DM {target_user.display_name}. They might have DMs disabled or blocked the bot.")
-        else:
-            # Otherwise, send in the current channel
-            try:
-                await interaction.channel.send(message)
-                await interaction.followup.send("✅ Message sent in this channel.")
-            except discord.Forbidden:
-                await interaction.followup.send("❌ I don't have permission to send messages in this channel.")
+                await interaction.followup.send(message, allowed_mentions=discord.AllowedMentions.none())
+            except Exception:
+                # Fallback: try sending directly to the channel
+                try:
+                    await interaction.channel.send(message, allowed_mentions=discord.AllowedMentions.none())
+                except Exception:
+                    # If all fails, silently ignore to avoid crashing the cog load
+                    pass
+            return
 
-async def setup(bot: commands.Bot):
-    await bot.add_cog(SendAnywhere(bot))
+        # If the command is in a guild (server)
+        # Step 1: ephemeral response to user
+        await interaction.response.send_message("Success!", ephemeral=True)
+
+        # Step 2: send public message as a follow-up to the interaction (no mentions)
+        try:
+            await interaction.followup.send(message, allowed_mentions=discord.AllowedMentions.none())
+        except Exception:
+            # Fallback to channel send if followup fails
+            try:
+                await interaction.channel.send(message, allowed_mentions=discord.AllowedMentions.none())
+            except Exception:
+                # Give the user an ephemeral error message if possible
+                try:
+                    await interaction.followup.send("Failed to post message (missing permissions?)", ephemeral=True)
+                except Exception:
+                    pass
+
+
+
+async def setup(bot):
+    await bot.add_cog(Say(bot))

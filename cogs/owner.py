@@ -26,6 +26,9 @@ class Owner(commands.Cog):
         ])
         self.status_cycle.start()
 
+    async def _is_owner_interaction(self, interaction: discord.Interaction) -> bool:
+        return await interaction.client.is_owner(interaction.user)
+
     def cog_unload(self):
         """Stop the status cycle task when cog is unloaded"""
         self.status_cycle.cancel()
@@ -48,374 +51,268 @@ class Owner(commands.Cog):
     async def before_status_cycle(self):
         await self.bot.wait_until_ready()
 
-    # ---------- MANUAL STATUS ----------
-    @commands.command(name="status", help="Change bot presence manually (Admin only)")
+    # (slash commands removed; owner-only functionality remains via prefix commands)
+
+    # ---------- SINGLE OWNER COMMAND ----------
+    @commands.command(name="bot", help="Owner-only: manage the bot with subcommands.")
     @commands.is_owner()
-    async def change_status(self, ctx, *, text: str):
-        self.cycle_paused = True
-        await self.bot.change_presence(activity=discord.Game(text))
-        await ctx.send(f"✅ Status changed to: `{text}`\n⏸️ Auto-cycling paused. Use `eresumecycle` to resume.")
-
-    @change_status.error
-    async def change_status_error(self, ctx, error):
-        if isinstance(error, commands.NotOwner):
-            await ctx.send("❌ Only the bot owner can use this command.")
-        else:
-            await ctx.send(f"❌ An error occurred: {error}")
-
-    @commands.command(name="setstate", help="Change bot status mode (online/idle/dnd/invisible)")
-    @commands.is_owner()
-    async def set_bot_state(self, ctx, state: str):
-        states = {
-            "online": discord.Status.online,
-            "idle": discord.Status.idle,
-            "dnd": discord.Status.dnd,
-            "invisible": discord.Status.invisible,
-        }
-        if state.lower() not in states:
-            await ctx.send("⚠️ Invalid state. Use: online, idle, dnd, invisible.")
-            return
-
-        self.cycle_paused = True
-        await self.bot.change_presence(status=states[state.lower()])
-        await ctx.send(f"✅ Bot online status set to `{state}`\n⏸️ Auto-cycling paused. Use `e!resumecycle` to resume.")
-
-    @set_bot_state.error
-    async def set_bot_state_error(self, ctx, error):
-        if isinstance(error, commands.NotOwner):
-            await ctx.send("❌ Only the bot owner can use this command.")
-        else:
-            await ctx.send(f"❌ An error occurred: {error}")
-
-    @commands.command(name="resumecycle", help="Resume automatic status cycling")
-    @commands.is_owner()
-    async def resume_cycle(self, ctx):
-        self.cycle_paused = False
-        await ctx.send("▶️ Status auto-cycling resumed!")
-
-    @resume_cycle.error
-    async def resume_cycle_error(self, ctx, error):
-        if isinstance(error, commands.NotOwner):
-            await ctx.send("❌ Only the bot owner can use this command.")
-
-    @commands.command(name="pausecycle", help="Pause automatic status cycling")
-    @commands.is_owner()
-    async def pause_cycle(self, ctx):
-        self.cycle_paused = True
-        await ctx.send("⏸️ Status auto-cycling paused!")
-
-    @pause_cycle.error
-    async def pause_cycle_error(self, ctx, error):
-        if isinstance(error, commands.NotOwner):
-            await ctx.send("❌ Only the bot owner can use this command.")
-
-    # ---------- BOT PROFILE MANAGEMENT ----------
-    @commands.command(name="setname", help="Change the bot's username")
-    @commands.is_owner()
-    async def set_name(self, ctx, *, name: str):
-        """Change the bot's username"""
-        try:
-            await self.bot.user.edit(username=name)
-            await ctx.send(f"✅ Bot username changed to: `{name}`")
-        except discord.HTTPException as e:
-            if e.status == 429:
-                await ctx.send("❌ Rate limited! You can only change the bot's username twice per hour.")
-            else:
-                await ctx.send(f"❌ Failed to change username: {e}")
-        except Exception as e:
-            await ctx.send(f"❌ An error occurred: {e}")
-
-    @set_name.error
-    async def set_name_error(self, ctx, error):
-        if isinstance(error, commands.NotOwner):
-            await ctx.send("❌ Only the bot owner can use this command.")
-
-    @commands.command(name="setavatar", help="Change the bot's profile picture")
-    @commands.is_owner()
-    async def set_avatar(self, ctx, url: str = None):
+    async def bot(self, ctx, action: str, *params):
+        """Unified owner command. Usage examples:
+        - .bot status <text>
+        - .bot setstate <online|idle|dnd|invisible>
+        - .bot resume|pause
+        - .bot setname <new name>
+        - .bot setavatar <url or attach image>
+        - .bot setbanner <url or attach image>
+        - .bot removebanner
+        - .bot profile
+        - .bot sync [current|global|remove|guild_id ...]
+        - .bot reload <cog>
+        - .bot load <cog>
+        - .bot unload <cog>
+        - .bot cogs
+        - .bot shutdown
         """
-        Change the bot's profile picture
-        Usage: !setavatar <image_url> or attach an image
-        """
-        try:
-            # Check if image is attached
-            if ctx.message.attachments:
-                image_url = ctx.message.attachments[0].url
-            elif url:
-                image_url = url
-            else:
-                await ctx.send("❌ Please provide an image URL or attach an image.")
+        action = action.lower()
+
+        # ----- STATUS ACTIONS (combined) -----
+        if action in ("status", "setstatus", "stat", "setstate", "state"):
+            states = {
+                "online": discord.Status.online,
+                "idle": discord.Status.idle,
+                "dnd": discord.Status.dnd,
+                "invisible": discord.Status.invisible,
+            }
+
+            # If a single param equals one of the state keywords, treat as state change
+            if len(params) == 1 and params[0].lower() in states:
+                state = params[0].lower()
+                self.cycle_paused = True
+                try:
+                    await self.bot.change_presence(status=states[state])
+                    await ctx.send(f"✅ Bot online status set to `{state}`\n⏸️ Auto-cycling paused.")
+                except Exception as e:
+                    await ctx.send(f"❌ Failed to set state: {e}")
                 return
 
-            # Download the image
-            async with aiohttp.ClientSession() as session:
-                async with session.get(image_url) as resp:
-                    if resp.status != 200:
-                        await ctx.send("❌ Failed to download the image.")
-                        return
-                    image_data = await resp.read()
-
-            # Set the avatar
-            await self.bot.user.edit(avatar=image_data)
-            await ctx.send("✅ Bot avatar updated successfully!")
-
-        except discord.HTTPException as e:
-            if e.status == 429:
-                await ctx.send("❌ Rate limited! You can only change the bot's avatar a few times per hour.")
-            else:
-                await ctx.send(f"❌ Failed to change avatar: {e}")
-        except Exception as e:
-            await ctx.send(f"❌ An error occurred: {e}")
-
-    @set_avatar.error
-    async def set_avatar_error(self, ctx, error):
-        if isinstance(error, commands.NotOwner):
-            await ctx.send("❌ Only the bot owner can use this command.")
-
-    @commands.command(name="setbanner", help="Change the bot's profile banner")
-    @commands.is_owner()
-    async def set_banner(self, ctx, url: str = None):
-        """
-        Change the bot's profile banner
-        Usage: !setbanner <image_url> or attach an image
-        Note: This requires the bot to have a premium subscription
-        """
-        try:
-            # Check if image is attached
-            if ctx.message.attachments:
-                image_url = ctx.message.attachments[0].url
-            elif url:
-                image_url = url
-            else:
-                await ctx.send("❌ Please provide an image URL or attach an image.")
+            # Otherwise treat params as status text
+            text = " ".join(params).strip()
+            if not text:
+                await ctx.send("❌ Please provide a status text or a state keyword (online, idle, dnd, invisible).")
                 return
-
-            # Download the image
-            async with aiohttp.ClientSession() as session:
-                async with session.get(image_url) as resp:
-                    if resp.status != 200:
-                        await ctx.send("❌ Failed to download the image.")
-                        return
-                    image_data = await resp.read()
-
-            # Set the banner
-            await self.bot.user.edit(banner=image_data)
-            await ctx.send("✅ Bot banner updated successfully!")
-
-        except discord.HTTPException as e:
-            if "premium" in str(e).lower():
-                await ctx.send("❌ Setting a banner requires the bot to have Discord premium (bot subscription).")
-            else:
-                await ctx.send(f"❌ Failed to change banner: {e}")
-        except Exception as e:
-            await ctx.send(f"❌ An error occurred: {e}")
-
-    @set_banner.error
-    async def set_banner_error(self, ctx, error):
-        if isinstance(error, commands.NotOwner):
-            await ctx.send("❌ Only the bot owner can use this command.")
-
-    @commands.command(name="removebanner", help="Remove the bot's profile banner")
-    @commands.is_owner()
-    async def remove_banner(self, ctx):
-        """Remove the bot's profile banner"""
-        try:
-            await self.bot.user.edit(banner=None)
-            await ctx.send("✅ Bot banner removed successfully!")
-        except discord.HTTPException as e:
-            await ctx.send(f"❌ Failed to remove banner: {e}")
-        except Exception as e:
-            await ctx.send(f"❌ An error occurred: {e}")
-
-    @remove_banner.error
-    async def remove_banner_error(self, ctx, error):
-        if isinstance(error, commands.NotOwner):
-            await ctx.send("❌ Only the bot owner can use this command.")
-
-    @commands.command(name="botinfo", help="Display current bot profile information")
-    @commands.is_owner()
-    async def profile_info(self, ctx):
-        """Display current bot profile information"""
-        user = self.bot.user
-        embed = discord.Embed(
-            title="🤖 Bot Profile Information",
-            color=discord.Color.blue()
-        )
-        embed.set_thumbnail(url=user.display_avatar.url)
-
-        if user.banner:
-            embed.set_image(url=user.banner.url)
-
-        embed.add_field(name="Username", value=user.name, inline=True)
-        embed.add_field(name="ID", value=user.id, inline=True)
-        embed.add_field(name="Discriminator", value=user.discriminator if user.discriminator != "0" else "None", inline=True)
-
-        # Note: Bio might not be accessible via self.bot.user
-        embed.add_field(name="Created At", value=user.created_at.strftime("%Y-%m-%d %H:%M:%S"), inline=False)
-        embed.add_field(name="Servers", value=len(self.bot.guilds), inline=True)
-        embed.add_field(name="Users", value=sum(g.member_count for g in self.bot.guilds), inline=True)
-
-        await ctx.send(embed=embed)
-
-    @profile_info.error
-    async def profile_info_error(self, ctx, error):
-        if isinstance(error, commands.NotOwner):
-            await ctx.send("❌ Only the bot owner can use this command.")
-
-    # ---------- SYNC COMMAND ----------
-    @commands.command(name="sync", help="Sync slash commands")
-    @commands.guild_only()
-    @commands.is_owner()
-    async def sync(
-        self,
-        ctx: commands.Context,
-        guilds: commands.Greedy[discord.Object],
-        spec: Optional[Literal["current", "global", "remove"]] = None
-    ) -> None:
-        """
-        Sync slash commands to Discord.
-
-        Usage:
-        - e!sync -> Sync globally
-        - e!sync current -> Sync to current guild
-        - e!sync global -> Copy global commands to current guild
-        - e!sync remove -> Remove all commands from current guild
-        - e!sync [guild_id] -> Sync to specific guild(s)
-        """
-        if not guilds:
-            if spec == "current":
-                synced = await ctx.bot.tree.sync(guild=ctx.guild)
-            elif spec == "global":
-                ctx.bot.tree.copy_global_to(guild=ctx.guild)
-                synced = await ctx.bot.tree.sync(guild=ctx.guild)
-            elif spec == "remove":
-                ctx.bot.tree.clear_commands(guild=ctx.guild)
-                await ctx.bot.tree.sync(guild=ctx.guild)
-                synced = []
-            else:
-                synced = await ctx.bot.tree.sync()
-
-            await ctx.send(
-                f"✅ Synced {len(synced)} commands {'globally' if spec is None else 'to the current guild.'}"
-            )
-            return
-
-        ret = 0
-        for guild in guilds:
+            self.cycle_paused = True
             try:
-                await ctx.bot.tree.sync(guild=guild)
-            except discord.HTTPException:
-                pass
-            else:
-                ret += 1
-
-        await ctx.send(f"✅ Synced the tree to {ret}/{len(guilds)} guild(s).")
-
-    @sync.error
-    async def sync_error(self, ctx, error):
-        if isinstance(error, commands.NotOwner):
-            await ctx.send("❌ Only the bot owner can use this command.")
-        elif isinstance(error, commands.NoPrivateMessage):
-            await ctx.send("❌ This command can only be used in a server.")
-        else:
-            await ctx.send(f"❌ An error occurred: {error}")
-
-    # ---------- RELOAD COMMAND ----------
-    @commands.command(name="reload", help="Reload a specific cog")
-    @commands.is_owner()
-    async def reload_cog(self, ctx, cog_name: str):
-        """Reload a cog without restarting the bot"""
-        try:
-            await self.bot.reload_extension(f"cogs.{cog_name}")
-            await ctx.send(f"✅ Reloaded cog: `{cog_name}`")
-        except commands.ExtensionNotFound:
-            await ctx.send(f"❌ Cog `{cog_name}` not found.")
-        except commands.ExtensionNotLoaded:
-            await ctx.send(f"❌ Cog `{cog_name}` is not loaded.")
-        except Exception as e:
-            await ctx.send(f"❌ Failed to reload `{cog_name}`: {e}")
-
-    @reload_cog.error
-    async def reload_cog_error(self, ctx, error):
-        if isinstance(error, commands.NotOwner):
-            await ctx.send("❌ Only the bot owner can use this command.")
-
-    # ---------- LOAD COMMAND ----------
-    @commands.command(name="load", help="Load a cog")
-    @commands.is_owner()
-    async def load_cog(self, ctx, cog_name: str):
-        """Load a cog"""
-        try:
-            await self.bot.load_extension(f"cogs.{cog_name}")
-            await ctx.send(f"✅ Loaded cog: `{cog_name}`")
-        except commands.ExtensionNotFound:
-            await ctx.send(f"❌ Cog `{cog_name}` not found.")
-        except commands.ExtensionAlreadyLoaded:
-            await ctx.send(f"❌ Cog `{cog_name}` is already loaded.")
-        except Exception as e:
-            await ctx.send(f"❌ Failed to load `{cog_name}`: {e}")
-
-    @load_cog.error
-    async def load_cog_error(self, ctx, error):
-        if isinstance(error, commands.NotOwner):
-            await ctx.send("❌ Only the bot owner can use this command.")
-
-    # ---------- UNLOAD COMMAND ----------
-    @commands.command(name="unload", help="Unload a cog")
-    @commands.is_owner()
-    async def unload_cog(self, ctx, cog_name: str):
-        """Unload a cog"""
-        if cog_name.lower() == "owner":
-            await ctx.send("❌ Cannot unload the Owner cog!")
+                await self.bot.change_presence(activity=discord.Game(text))
+                await ctx.send(f"✅ Status changed to: `{text}`\n⏸️ Auto-cycling paused.")
+            except Exception as e:
+                await ctx.send(f"❌ Failed to change status: {e}")
             return
 
-        try:
-            await self.bot.unload_extension(f"cogs.{cog_name}")
-            await ctx.send(f"✅ Unloaded cog: `{cog_name}`")
-        except commands.ExtensionNotLoaded:
-            await ctx.send(f"❌ Cog `{cog_name}` is not loaded.")
-        except Exception as e:
-            await ctx.send(f"❌ Failed to unload `{cog_name}`: {e}")
+        if action in ("resume", "resumecycle", "unpause"):
+            self.cycle_paused = False
+            await ctx.send("▶️ Status auto-cycling resumed!")
+            return
 
-    @unload_cog.error
-    async def unload_cog_error(self, ctx, error):
-        if isinstance(error, commands.NotOwner):
-            await ctx.send("❌ Only the bot owner can use this command.")
+        if action in ("pause", "pausecycle"):
+            self.cycle_paused = True
+            await ctx.send("⏸️ Status auto-cycling paused!")
+            return
 
-    # ---------- LIST COGS ----------
-    @commands.command(name="cogs", help="List all loaded cogs")
-    @commands.is_owner()
-    async def list_cogs(self, ctx):
-        """List all currently loaded cogs"""
-        cogs = [cog for cog in self.bot.cogs.keys()]
-        if cogs:
+        # ----- PROFILE MANAGEMENT -----
+        if action in ("setname", "name"):
+            name = " ".join(params).strip()
+            if not name:
+                await ctx.send("❌ Please provide a new username.")
+                return
+            try:
+                await self.bot.user.edit(username=name)
+                await ctx.send(f"✅ Bot username changed to: `{name}`")
+            except discord.HTTPException as e:
+                if getattr(e, 'status', None) == 429:
+                    await ctx.send("❌ Rate limited! You can only change the bot's username twice per hour.")
+                else:
+                    await ctx.send(f"❌ Failed to change username: {e}")
+            except Exception as e:
+                await ctx.send(f"❌ An error occurred: {e}")
+            return
+
+        if action in ("setavatar", "avatar"):
+            # URL may be provided or attachment
+            image_url = None
+            if params:
+                image_url = params[0]
+            if ctx.message.attachments and not image_url:
+                image_url = ctx.message.attachments[0].url
+            if not image_url:
+                await ctx.send("❌ Please provide an image URL or attach an image.")
+                return
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(image_url) as resp:
+                        if resp.status != 200:
+                            await ctx.send("❌ Failed to download the image.")
+                            return
+                        image_data = await resp.read()
+                await self.bot.user.edit(avatar=image_data)
+                await ctx.send("✅ Bot avatar updated successfully!")
+            except discord.HTTPException as e:
+                if getattr(e, 'status', None) == 429:
+                    await ctx.send("❌ Rate limited! You can only change the bot's avatar a few times per hour.")
+                else:
+                    await ctx.send(f"❌ Failed to change avatar: {e}")
+            except Exception as e:
+                await ctx.send(f"❌ An error occurred: {e}")
+            return
+
+        if action in ("setbanner", "banner"):
+            image_url = None
+            if params:
+                image_url = params[0]
+            if ctx.message.attachments and not image_url:
+                image_url = ctx.message.attachments[0].url
+            if not image_url:
+                await ctx.send("❌ Please provide an image URL or attach an image.")
+                return
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(image_url) as resp:
+                        if resp.status != 200:
+                            await ctx.send("❌ Failed to download the image.")
+                            return
+                        image_data = await resp.read()
+                await self.bot.user.edit(banner=image_data)
+                await ctx.send("✅ Bot banner updated successfully!")
+            except discord.HTTPException as e:
+                if "premium" in str(e).lower():
+                    await ctx.send("❌ Setting a banner requires the bot to have Discord premium (bot subscription).")
+                else:
+                    await ctx.send(f"❌ Failed to change banner: {e}")
+            except Exception as e:
+                await ctx.send(f"❌ An error occurred: {e}")
+            return
+
+        if action in ("removebanner", "delbanner"):
+            try:
+                await self.bot.user.edit(banner=None)
+                await ctx.send("✅ Bot banner removed successfully!")
+            except Exception as e:
+                await ctx.send(f"❌ Failed to remove banner: {e}")
+            return
+
+        if action in ("profile", "botinfo"):
+            user = self.bot.user
             embed = discord.Embed(
-                title="📦 Loaded Cogs",
-                description="\n".join(f"• `{cog}`" for cog in sorted(cogs)),
+                title="🤖 Bot Profile Information",
                 color=discord.Color.blue()
             )
+            embed.set_thumbnail(url=user.display_avatar.url)
+            if user.banner:
+                embed.set_image(url=user.banner.url)
+            embed.add_field(name="Username", value=user.name, inline=True)
+            embed.add_field(name="ID", value=user.id, inline=True)
+            embed.add_field(name="Discriminator", value=user.discriminator if user.discriminator != "0" else "None", inline=True)
+            embed.add_field(name="Created At", value=user.created_at.strftime("%Y-%m-%d %H:%M:%S"), inline=False)
+            embed.add_field(name="Servers", value=len(self.bot.guilds), inline=True)
+            embed.add_field(name="Users", value=sum(g.member_count for g in self.bot.guilds), inline=True)
             await ctx.send(embed=embed)
+            return
+
+        # ----- SYNC -----
+        if action == "sync":
+            # params may contain keywords or guild ids
+            if not params:
+                synced = await ctx.bot.tree.sync()
+                await ctx.send(f"✅ Synced {len(synced)} commands globally.")
+                return
+
+            first = params[0].lower()
+            if first == "current":
+                synced = await ctx.bot.tree.sync(guild=ctx.guild)
+                await ctx.send(f"✅ Synced {len(synced)} commands to current guild.")
+                return
+            if first == "global":
+                ctx.bot.tree.copy_global_to(guild=ctx.guild)
+                synced = await ctx.bot.tree.sync(guild=ctx.guild)
+                await ctx.send(f"✅ Copied global to current guild ({len(synced)} commands).")
+                return
+            if first == "remove":
+                ctx.bot.tree.clear_commands(guild=ctx.guild)
+                await ctx.bot.tree.sync(guild=ctx.guild)
+                await ctx.send("✅ Cleared commands for current guild.")
+                return
+
+            # Otherwise treat params as guild ids
+            ret = 0
+            for p in params:
+                try:
+                    gid = int(p)
+                    await ctx.bot.tree.sync(guild=discord.Object(id=gid))
+                except Exception:
+                    continue
+                else:
+                    ret += 1
+            await ctx.send(f"✅ Synced to {ret}/{len(params)} guild(s).")
+            return
+
+        # ----- COG MANAGEMENT -----
+        if action in ("reload", "load", "unload"):
+            if not params:
+                await ctx.send("❌ Please provide a cog name.")
+                return
+            cog_name = params[0]
+            try:
+                if action == "reload":
+                    await self.bot.reload_extension(f"cogs.{cog_name}")
+                    await ctx.send(f"✅ Reloaded cog: `{cog_name}`")
+                elif action == "load":
+                    await self.bot.load_extension(f"cogs.{cog_name}")
+                    await ctx.send(f"✅ Loaded cog: `{cog_name}`")
+                else:
+                    if cog_name.lower() == "owner":
+                        await ctx.send("❌ Cannot unload the Owner cog!")
+                        return
+                    await self.bot.unload_extension(f"cogs.{cog_name}")
+                    await ctx.send(f"✅ Unloaded cog: `{cog_name}`")
+            except commands.ExtensionNotFound:
+                await ctx.send(f"❌ Cog `{cog_name}` not found.")
+            except commands.ExtensionAlreadyLoaded:
+                await ctx.send(f"❌ Cog `{cog_name}` is already loaded.")
+            except commands.ExtensionNotLoaded:
+                await ctx.send(f"❌ Cog `{cog_name}` is not loaded.")
+            except Exception as e:
+                await ctx.send(f"❌ Failed to {action} `{cog_name}`: {e}")
+            return
+
+        if action == "cogs":
+            cogs = [cog for cog in self.bot.cogs.keys()]
+            if cogs:
+                embed = discord.Embed(
+                    title="📦 Loaded Cogs",
+                    description="\n".join(f"• `{cog}`" for cog in sorted(cogs)),
+                    color=discord.Color.blue()
+                )
+                await ctx.send(embed=embed)
+            else:
+                await ctx.send("❌ No cogs are currently loaded.")
+            return
+
+        # ----- SHUTDOWN -----
+        if action in ("shutdown", "stop", "restart"):
+            await ctx.send("🛑 Shutting down bot...")
+            await self.bot.close()
+            return
+
+        # ----- UNKNOWN -----
+        await ctx.send("❌ Unknown action. Use `!bot help` for usage.")
+
+    @bot.error
+    async def bot_error(self, ctx, error):
+        if isinstance(error, commands.NotOwner):
+            await ctx.send("❌ Only the bot owner can use this command.")
         else:
-            await ctx.send("❌ No cogs are currently loaded.")
-
-    @list_cogs.error
-    async def list_cogs_error(self, ctx, error):
-        if isinstance(error, commands.NotOwner):
-            await ctx.send("❌ Only the bot owner can use this command.")
-
-    # ---------- SHUTDOWN ----------
-    @commands.command(name="shutdown")
-    @commands.is_owner()
-    async def shutdown(self, ctx):
-        """Shutdown the bot"""
-        await ctx.send("🛑 Shutting down bot...")
-        await self.bot.close()
-
-    @shutdown.error
-    async def shutdown_error(self, ctx, error):
-        if isinstance(error, commands.NotOwner):
-            await ctx.send("❌ Only the bot owner can use this command.")
+            await ctx.send(f"❌ An error occurred: {error}")
 
 
 async def setup(bot):
     await bot.add_cog(Owner(bot))
+            

@@ -47,7 +47,7 @@ class Utility(commands.Cog):
     async def slash_rtclock(self, interaction: discord.Interaction):
         await interaction.response.send_message(f"⏱️ Bot Realtime: `{get_current_time()}`")
 
-    @commands.command(name="userinfo")
+    @commands.command(name="usr")
     async def userinfo(self, ctx, user: discord.User = None):
         """Show user information (prefix)"""
         user = user or ctx.author
@@ -62,7 +62,7 @@ class Utility(commands.Cog):
         embed = await self._create_userinfo_embed(user, member, ctx.author)
         await ctx.send(embed=embed)
 
-    @discord.app_commands.command(name="userinfo", description="Show user information")
+    @discord.app_commands.command(name="usr", description="Show user information")
     @discord.app_commands.describe(user="The user to get information about (leave empty for yourself)")
     @discord.app_commands.allowed_installs(guilds=True, users=True)
     @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
