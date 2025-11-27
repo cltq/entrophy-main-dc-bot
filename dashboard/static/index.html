@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Bot Status — Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="dark">
+  <div class="container">
+    <header>
+      <div style="display:flex;gap:12px;align-items:center">
+        <h1 id="bot-name">Bot</h1>
+        <div id="bot-id">ID: -</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="btn-restart" class="btn danger">Restart</button>
+        <button id="btn-shutdown" class="btn danger">Shutdown</button>
+        <button id="btn-redeploy" class="btn primary">Redeploy Commands</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="card info">
+        <h2>Overview</h2>
+        <div class="grid">
+          <div><strong>Uptime</strong><div id="uptime" class="bigcount">-</div></div>
+          <div><strong>Guilds</strong><div id="guild-count" class="bigcount">0</div></div>
+        </div>
+      </section>
+
+      <section class="card logs-small">
+        <h2>Recent Logs</h2>
+        <div id="recent-logs" class="logbox"></div>
+        <a class="link" href="/logs.html">View full logs</a>
+      </section>
+    </main>
+
+    <footer>
+      <small>Dark-Aqua Dashboard • Smooth & Fast</small>
+    </footer>
+  </div>
+  <script src="/static/app.js"></script>
+  <script>
+    // Modal markup is in-page; show an animated confirm modal before actions
+    function showConfirmModal(title, text, defaultToken){
+      return new Promise((resolve) => {
+        const modal = document.getElementById('confirm-modal');
+        modal.querySelector('.modal-title').textContent = title;
+        modal.querySelector('.modal-text').textContent = text;
+        const tokenInput = modal.querySelector('#modal-token');
+        tokenInput.value = defaultToken || '';
+        modal.classList.add('open');
+
+        function cleanup(){
+          modal.classList.remove('open');
+          confirmBtn.removeEventListener('click', onConfirm);
+          cancelBtn.removeEventListener('click', onCancel);
+        }
+
+        function onConfirm(){
+          const tok = tokenInput.value.trim();
+          cleanup();
+          resolve({ok: true, token: tok});
+        }
+        function onCancel(){
+          cleanup();
+          resolve({ok: false});
+        }
+
+        const confirmBtn = modal.querySelector('.modal-confirm');
+        const cancelBtn = modal.querySelector('.modal-cancel');
+        confirmBtn.addEventListener('click', onConfirm);
+        cancelBtn.addEventListener('click', onCancel);
+      });
+    }
+
+    async function sendAction(action){
+      const stored = localStorage.getItem('dash_token') || '';
+      let title = 'Confirm';
+      let text = 'Are you sure?';
+      if(action === 'restart'){ title = 'Restart Bot'; text = 'Are you sure you want to restart the bot now?'; }
+      else if(action === 'shutdown'){ title = 'Shutdown Bot'; text = 'Are you sure you want to shutdown the bot now?'; }
+      else if(action === 'redeploy'){ title = 'Redeploy App Commands'; text = 'Redeploy (sync) application commands now? This updates global slash commands.'; }
+      const resp = await showConfirmModal(title, text, stored);
+      if(!resp.ok) return;
+      const token = resp.token || '';
+      if(token) localStorage.setItem('dash_token', token);
+      const headers = {};
+      if(token) headers['X-DASH-TOKEN'] = token;
+      const btnMap = {restart: 'btn-restart', shutdown: 'btn-shutdown', redeploy: 'btn-redeploy'};
+      const btn = document.getElementById(btnMap[action]);
+      try{
+        if(window.setButtonLoading && btn) window.setButtonLoading(btn, true);
+        const res = await fetch(`/api/${action}`, {method:'POST', headers});
+        const j = await res.json();
+        if(window.showToast) window.showToast(JSON.stringify(j));
+        else alert(JSON.stringify(j));
+      }catch(e){
+        if(window.showToast) window.showToast('Failed: '+e);
+        else alert('Failed to send action: ' + e);
+      }finally{
+        if(window.setButtonLoading && btn) window.setButtonLoading(btn, false);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const r = document.getElementById('btn-restart');
+      const s = document.getElementById('btn-shutdown');
+      const d = document.getElementById('btn-redeploy');
+      r.addEventListener('click', ()=> sendAction('restart'));
+      s.addEventListener('click', ()=> sendAction('shutdown'));
+      if(d) d.addEventListener('click', ()=> sendAction('redeploy'));
+    });
+  </script>
+</body>
+</html>

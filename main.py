@@ -3,6 +3,8 @@ import logging
 import discord
 from discord.ext import commands
 from utils.discord_logger import DiscordHandler
+from utils.log_buffer import BufferHandler
+from dashboard.server import start_dashboard
 from dotenv import load_dotenv
 from typing import Literal, Optional
 try:
@@ -51,36 +53,69 @@ fmt = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")
 stream = logging.StreamHandler()
 stream.setFormatter(fmt)
 logger.addHandler(stream)
+# Add in-memory buffer handler for dashboard
+try:
+    buf = BufferHandler()
+    logger.addHandler(buf)
+except Exception:
+    logger.exception('Failed to attach BufferHandler')
+
+# Add rotating file handler to persist logs for 'all logs' page
+try:
+    import logging.handlers
+    os.makedirs(os.path.join(os.getcwd(), 'logs'), exist_ok=True)
+    fileh = logging.handlers.RotatingFileHandler(os.path.join('logs', 'entrophy.log'), maxBytes=2_000_000, backupCount=5, encoding='utf-8')
+    fileh.setFormatter(fmt)
+    logger.addHandler(fileh)
+except Exception:
+    logger.exception('Failed to attach file handler')
 
 # Optionally send logs to a Discord channel (set LOG_CHANNEL_ID in .env)
 LOG_CHANNEL_ID = os.getenv("LOG_CHANNEL_ID")
-if LOG_CHANNEL_ID:
-    async def _attach_discord_handler():
-        try:
-            discord_handler = DiscordHandler(bot, int(LOG_CHANNEL_ID))
-            discord_handler.setFormatter(fmt)
-            logger.addHandler(discord_handler)
-            # Start the handler's background sender task
-            try:
-                await discord_handler.start()
-            except Exception:
-                logger.exception("Failed to start DiscordHandler task")
-            logger.info("DiscordHandler attached")
-        except Exception:
-            logger.exception("Failed to attach DiscordHandler")
 
-    # Use the bot's async setup hook so the handler is created in an async context
-    # without accessing event loop attributes in synchronous code.
+# Prepare optional discord handler attach function (runs in setup_hook)
+async def _attach_discord_handler_if_configured():
+    if not LOG_CHANNEL_ID:
+        return
     try:
-        original_setup = getattr(bot, 'setup_hook', None)
-        async def combined_setup():
-            if original_setup:
-                await original_setup()
-            await _attach_discord_handler()
-        bot.setup_hook = combined_setup
+        discord_handler = DiscordHandler(bot, int(LOG_CHANNEL_ID))
+        discord_handler.setFormatter(fmt)
+        logger.addHandler(discord_handler)
+        try:
+            await discord_handler.start()
+        except Exception:
+            logger.exception("Failed to start DiscordHandler task")
+        logger.info("DiscordHandler attached")
     except Exception:
-        # Fallback: try scheduling attach after bot is ready
-        pass
+        logger.exception("Failed to attach DiscordHandler")
+
+
+# Use the bot's async setup hook to attach handlers and start the dashboard
+try:
+    original_setup = getattr(bot, 'setup_hook', None)
+
+    async def combined_setup():
+        if original_setup:
+            await original_setup()
+        # Attach discord handler if configured
+        await _attach_discord_handler_if_configured()
+
+        # Start dashboard server if requested (separate from Discord handler)
+        try:
+            if os.getenv('DASHBOARD_ENABLED', 'true').lower() in ('1', 'true', 'yes'):
+                host = os.getenv('DASHBOARD_HOST', '0.0.0.0')
+                # Prefer Render's $PORT if available
+                port = int(os.getenv('PORT') or os.getenv('DASHBOARD_PORT', '8080'))
+                # start in background; avoid blocking setup
+                bot.loop.create_task(start_dashboard(bot, host=host, port=port))
+                logger.info(f"Dashboard scheduled on {host}:{port}")
+        except Exception:
+            logger.exception('Failed to start dashboard')
+
+    bot.setup_hook = combined_setup
+except Exception:
+    # If we cannot set setup_hook, we'll rely on on_ready or other fallback
+    logger.exception('Failed to install setup_hook')
 
     # ---------- LOG HELPERS ----------
     def format_user(user: discord.abc.User):
@@ -219,7 +254,9 @@ async def main():
 
 if __name__ == "__main__":
     # Start the optional keep-alive webserver if available and enabled via env
-    if keep_alive and os.getenv("KEEP_ALIVE", "false").lower() in ("1", "true", "yes"):
+    # Only start the Flask keep_alive if the aiohttp dashboard is NOT enabled.
+    dashboard_enabled = os.getenv('DASHBOARD_ENABLED', 'true').lower() in ('1', 'true', 'yes')
+    if keep_alive and os.getenv("KEEP_ALIVE", "false").lower() in ("1", "true", "yes") and not dashboard_enabled:
         try:
             keep_alive()
             logger.info("keep_alive enabled")

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Bot Logs — Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="dark">
+  <div class="container">
+    <header>
+      <h1>Logs</h1>
+      <a class="link" href="/">Back to status</a>
+    </header>
+
+    <main>
+      <section class="card logs-full">
+        <div id="full-logs" class="logbox large"></div>
+      </section>
+    </main>
+
+    <footer>
+      <small>Logs (most recent first)</small>
+    </footer>
+  </div>
+  <script>
+    async function loadLogs(){
+      const res = await fetch('/api/logs');
+      const data = await res.json();
+      const el = document.getElementById('full-logs');
+      el.innerHTML = '';
+      for(const ln of data.logs){
+        const div = document.createElement('div');
+        div.className = 'logline';
+        div.textContent = ln;
+        el.appendChild(div);
+      }
+    }
+    loadLogs();
+  </script>
+</body>
+</html>

@@ -1,0 +1,229 @@
+2025-11-27 23:49:44,659 | INFO | 📦 Loaded cog: general
+2025-11-27 23:49:44,691 | INFO | 📦 Loaded cog: client
+2025-11-27 23:49:44,733 | INFO | 📦 Loaded cog: moderation
+2025-11-27 23:49:44,863 | INFO | 📦 Loaded cog: owner
+2025-11-27 23:49:44,881 | INFO | 📦 Loaded cog: admin
+2025-11-27 23:49:44,928 | INFO | 📦 Loaded cog: utility
+2025-11-27 23:49:47,233 | INFO | DiscordHandler attached
+2025-11-27 23:49:47,233 | INFO | Dashboard scheduled on 0.0.0.0:8080
+2025-11-27 23:49:50,181 | INFO | ✅ Logged in as Entrophy#6059 (ID: 1320377919817781248)
+2025-11-27 23:49:50,855 | INFO | 🔁 Synced 6 slash commands
+2025-11-27 23:49:50,868 | INFO |   - ping: global
+2025-11-27 23:49:50,885 | INFO |   - say: global
+2025-11-27 23:49:50,898 | INFO |   - uptime: global
+2025-11-27 23:49:50,933 | INFO |   - rtclock: global
+2025-11-27 23:49:50,942 | INFO |   - usr: global
+2025-11-27 23:49:50,964 | INFO |   - User Info: global
+2025-11-27 23:49:50,972 | INFO | 🔁 Slash commands synced.
+2025-11-27 23:54:49,804 | INFO | keep_alive enabled
+2025-11-27 23:54:50,067 | INFO | 📦 Loaded cog: general
+2025-11-27 23:54:50,076 | INFO | 📦 Loaded cog: client
+2025-11-27 23:54:50,186 | INFO | 📦 Loaded cog: moderation
+2025-11-27 23:54:50,317 | INFO | 📦 Loaded cog: owner
+2025-11-27 23:54:50,360 | INFO | 📦 Loaded cog: admin
+2025-11-27 23:54:50,397 | INFO | 📦 Loaded cog: utility
+2025-11-27 23:54:51,705 | INFO | DiscordHandler attached
+2025-11-27 23:54:51,706 | INFO | Dashboard scheduled on 0.0.0.0:8080
+2025-11-27 23:54:54,838 | INFO | ✅ Logged in as Entrophy#6059 (ID: 1320377919817781248)
+2025-11-27 23:54:56,384 | INFO | 🔁 Synced 6 slash commands
+2025-11-27 23:54:56,385 | INFO |   - ping: global
+2025-11-27 23:54:56,386 | INFO |   - say: global
+2025-11-27 23:54:56,386 | INFO |   - uptime: global
+2025-11-27 23:54:56,387 | INFO |   - rtclock: global
+2025-11-27 23:54:56,387 | INFO |   - usr: global
+2025-11-27 23:54:56,388 | INFO |   - User Info: global
+2025-11-27 23:54:56,389 | INFO | 🔁 Slash commands synced.
+2025-11-27 23:57:33,794 | INFO | keep_alive enabled
+2025-11-27 23:57:33,955 | INFO | 📦 Loaded cog: general
+2025-11-27 23:57:34,001 | INFO | 📦 Loaded cog: client
+2025-11-27 23:57:34,043 | INFO | 📦 Loaded cog: moderation
+2025-11-27 23:57:34,179 | INFO | 📦 Loaded cog: owner
+2025-11-27 23:57:34,207 | INFO | 📦 Loaded cog: admin
+2025-11-27 23:57:34,320 | INFO | 📦 Loaded cog: utility
+2025-11-27 23:57:36,043 | INFO | DiscordHandler attached
+2025-11-27 23:57:36,043 | INFO | Dashboard scheduled on 0.0.0.0:8080
+2025-11-27 23:57:39,210 | INFO | ✅ Logged in as Entrophy#6059 (ID: 1320377919817781248)
+2025-11-27 23:57:39,721 | INFO | 🔁 Synced 6 slash commands
+2025-11-27 23:57:39,722 | INFO |   - ping: global
+2025-11-27 23:57:39,726 | INFO |   - say: global
+2025-11-27 23:57:39,727 | INFO |   - uptime: global
+2025-11-27 23:57:39,727 | INFO |   - rtclock: global
+2025-11-27 23:57:39,728 | INFO |   - usr: global
+2025-11-27 23:57:39,729 | INFO |   - User Info: global
+2025-11-27 23:57:39,729 | INFO | 🔁 Slash commands synced.
+2025-11-28 00:01:35,829 | INFO | 📦 Loaded cog: general
+2025-11-28 00:01:35,891 | INFO | 📦 Loaded cog: client
+2025-11-28 00:01:35,952 | INFO | 📦 Loaded cog: moderation
+2025-11-28 00:01:36,038 | INFO | 📦 Loaded cog: owner
+2025-11-28 00:01:36,070 | INFO | 📦 Loaded cog: admin
+2025-11-28 00:01:36,106 | INFO | 📦 Loaded cog: utility
+2025-11-28 00:01:38,597 | INFO | DiscordHandler attached
+2025-11-28 00:01:38,598 | INFO | Dashboard scheduled on 0.0.0.0:8080
+2025-11-28 00:01:41,653 | INFO | ✅ Logged in as Entrophy#6059 (ID: 1320377919817781248)
+2025-11-28 00:01:42,314 | INFO | 🔁 Synced 6 slash commands
+2025-11-28 00:01:42,314 | INFO |   - ping: global
+2025-11-28 00:01:42,315 | INFO |   - say: global
+2025-11-28 00:01:42,315 | INFO |   - uptime: global
+2025-11-28 00:01:42,316 | INFO |   - rtclock: global
+2025-11-28 00:01:42,316 | INFO |   - usr: global
+2025-11-28 00:01:42,316 | INFO |   - User Info: global
+2025-11-28 00:01:42,317 | INFO | 🔁 Slash commands synced.
+2025-11-28 00:04:02,729 | INFO | 📦 Loaded cog: general
+2025-11-28 00:04:02,773 | INFO | 📦 Loaded cog: client
+2025-11-28 00:04:02,867 | INFO | 📦 Loaded cog: moderation
+2025-11-28 00:04:02,976 | INFO | 📦 Loaded cog: owner
+2025-11-28 00:04:03,014 | INFO | 📦 Loaded cog: admin
+2025-11-28 00:04:03,072 | INFO | 📦 Loaded cog: utility
+2025-11-28 00:04:04,539 | INFO | DiscordHandler attached
+2025-11-28 00:04:04,541 | INFO | Dashboard scheduled on 0.0.0.0:8080
+2025-11-28 00:04:07,728 | INFO | ✅ Logged in as Entrophy#6059 (ID: 1320377919817781248)
+2025-11-28 00:04:08,277 | INFO | 🔁 Synced 6 slash commands
+2025-11-28 00:04:08,277 | INFO |   - ping: global
+2025-11-28 00:04:08,278 | INFO |   - say: global
+2025-11-28 00:04:08,278 | INFO |   - uptime: global
+2025-11-28 00:04:08,279 | INFO |   - rtclock: global
+2025-11-28 00:04:08,279 | INFO |   - usr: global
+2025-11-28 00:04:08,280 | INFO |   - User Info: global
+2025-11-28 00:04:08,280 | INFO | 🔁 Slash commands synced.
+2025-11-28 00:10:14,833 | INFO | 📦 Loaded cog: general
+2025-11-28 00:10:14,923 | INFO | 📦 Loaded cog: client
+2025-11-28 00:10:14,970 | INFO | 📦 Loaded cog: moderation
+2025-11-28 00:10:15,172 | INFO | 📦 Loaded cog: owner
+2025-11-28 00:10:15,187 | INFO | 📦 Loaded cog: admin
+2025-11-28 00:10:15,231 | INFO | 📦 Loaded cog: utility
+2025-11-28 00:10:16,934 | INFO | DiscordHandler attached
+2025-11-28 00:10:16,935 | INFO | Dashboard scheduled on 0.0.0.0:8080
+2025-11-28 00:10:19,806 | INFO | ✅ Logged in as Entrophy#6059 (ID: 1320377919817781248)
+2025-11-28 00:10:20,452 | INFO | 🔁 Synced 6 slash commands
+2025-11-28 00:10:20,454 | INFO |   - ping: global
+2025-11-28 00:10:20,455 | INFO |   - say: global
+2025-11-28 00:10:20,455 | INFO |   - uptime: global
+2025-11-28 00:10:20,455 | INFO |   - rtclock: global
+2025-11-28 00:10:20,456 | INFO |   - usr: global
+2025-11-28 00:10:20,456 | INFO |   - User Info: global
+2025-11-28 00:10:20,456 | INFO | 🔁 Slash commands synced.
+2025-11-28 00:11:14,133 | INFO | 📦 Loaded cog: general
+2025-11-28 00:11:14,148 | INFO | 📦 Loaded cog: client
+2025-11-28 00:11:14,200 | INFO | 📦 Loaded cog: moderation
+2025-11-28 00:11:14,326 | INFO | 📦 Loaded cog: owner
+2025-11-28 00:11:14,329 | INFO | 📦 Loaded cog: admin
+2025-11-28 00:11:14,353 | INFO | 📦 Loaded cog: utility
+2025-11-28 00:11:16,363 | INFO | DiscordHandler attached
+2025-11-28 00:11:16,365 | INFO | Dashboard scheduled on 0.0.0.0:8080
+2025-11-28 00:11:19,328 | INFO | ✅ Logged in as Entrophy#6059 (ID: 1320377919817781248)
+2025-11-28 00:11:20,157 | INFO | 🔁 Synced 6 slash commands
+2025-11-28 00:11:20,164 | INFO |   - ping: global
+2025-11-28 00:11:20,170 | INFO |   - say: global
+2025-11-28 00:11:20,171 | INFO |   - uptime: global
+2025-11-28 00:11:20,190 | INFO |   - rtclock: global
+2025-11-28 00:11:20,197 | INFO |   - usr: global
+2025-11-28 00:11:20,198 | INFO |   - User Info: global
+2025-11-28 00:11:20,198 | INFO | 🔁 Slash commands synced.
+2025-11-28 00:13:15,467 | INFO | 📦 Loaded cog: general
+2025-11-28 00:13:15,469 | INFO | 📦 Loaded cog: client
+2025-11-28 00:13:15,479 | INFO | 📦 Loaded cog: moderation
+2025-11-28 00:13:15,560 | INFO | 📦 Loaded cog: owner
+2025-11-28 00:13:15,564 | INFO | 📦 Loaded cog: admin
+2025-11-28 00:13:15,569 | INFO | 📦 Loaded cog: utility
+2025-11-28 00:13:16,860 | INFO | DiscordHandler attached
+2025-11-28 00:13:16,860 | INFO | Dashboard scheduled on 0.0.0.0:8080
+2025-11-28 00:13:19,943 | INFO | ✅ Logged in as Entrophy#6059 (ID: 1320377919817781248)
+2025-11-28 00:13:20,574 | INFO | 🔁 Synced 6 slash commands
+2025-11-28 00:13:20,575 | INFO |   - ping: global
+2025-11-28 00:13:20,576 | INFO |   - say: global
+2025-11-28 00:13:20,576 | INFO |   - uptime: global
+2025-11-28 00:13:20,577 | INFO |   - rtclock: global
+2025-11-28 00:13:20,577 | INFO |   - usr: global
+2025-11-28 00:13:20,577 | INFO |   - User Info: global
+2025-11-28 00:13:20,577 | INFO | 🔁 Slash commands synced.
+2025-11-28 00:16:18,413 | INFO | 📦 Loaded cog: general
+2025-11-28 00:16:18,431 | INFO | 📦 Loaded cog: client
+2025-11-28 00:16:18,545 | INFO | 📦 Loaded cog: moderation
+2025-11-28 00:16:18,630 | INFO | 📦 Loaded cog: owner
+2025-11-28 00:16:18,633 | INFO | 📦 Loaded cog: admin
+2025-11-28 00:16:18,645 | INFO | 📦 Loaded cog: utility
+2025-11-28 00:16:19,978 | INFO | DiscordHandler attached
+2025-11-28 00:16:19,978 | INFO | Dashboard scheduled on 0.0.0.0:8080
+2025-11-28 00:16:23,059 | INFO | ✅ Logged in as Entrophy#6059 (ID: 1320377919817781248)
+2025-11-28 00:16:23,870 | INFO | 🔁 Synced 6 slash commands
+2025-11-28 00:16:23,871 | INFO |   - ping: global
+2025-11-28 00:16:23,872 | INFO |   - say: global
+2025-11-28 00:16:23,873 | INFO |   - uptime: global
+2025-11-28 00:16:23,874 | INFO |   - rtclock: global
+2025-11-28 00:16:23,875 | INFO |   - usr: global
+2025-11-28 00:16:23,876 | INFO |   - User Info: global
+2025-11-28 00:16:23,878 | INFO | 🔁 Slash commands synced.
+2025-11-28 00:20:23,940 | INFO | 📦 Loaded cog: general
+2025-11-28 00:20:23,948 | INFO | 📦 Loaded cog: client
+2025-11-28 00:20:23,997 | INFO | 📦 Loaded cog: moderation
+2025-11-28 00:20:24,132 | INFO | 📦 Loaded cog: owner
+2025-11-28 00:20:24,140 | INFO | 📦 Loaded cog: admin
+2025-11-28 00:20:24,159 | INFO | 📦 Loaded cog: utility
+2025-11-28 00:20:55,347 | INFO | 📦 Loaded cog: general
+2025-11-28 00:20:55,349 | INFO | 📦 Loaded cog: client
+2025-11-28 00:20:55,354 | INFO | 📦 Loaded cog: moderation
+2025-11-28 00:20:55,410 | INFO | 📦 Loaded cog: owner
+2025-11-28 00:20:55,413 | INFO | 📦 Loaded cog: admin
+2025-11-28 00:20:55,431 | INFO | 📦 Loaded cog: utility
+2025-11-28 00:20:57,289 | INFO | DiscordHandler attached
+2025-11-28 00:20:57,290 | INFO | Dashboard scheduled on 0.0.0.0:8080
+2025-11-28 00:21:00,312 | INFO | ✅ Logged in as Entrophy#6059 (ID: 1320377919817781248)
+2025-11-28 00:21:00,837 | INFO | 🔁 Synced 6 slash commands
+2025-11-28 00:21:00,838 | INFO |   - ping: global
+2025-11-28 00:21:00,839 | INFO |   - say: global
+2025-11-28 00:21:00,840 | INFO |   - uptime: global
+2025-11-28 00:21:00,841 | INFO |   - rtclock: global
+2025-11-28 00:21:00,841 | INFO |   - usr: global
+2025-11-28 00:21:00,842 | INFO |   - User Info: global
+2025-11-28 00:21:00,842 | INFO | 🔁 Slash commands synced.
+2025-11-28 00:25:25,170 | INFO | 📦 Loaded cog: general
+2025-11-28 00:25:25,202 | INFO | 📦 Loaded cog: client
+2025-11-28 00:25:25,246 | INFO | 📦 Loaded cog: moderation
+2025-11-28 00:25:25,364 | INFO | 📦 Loaded cog: owner
+2025-11-28 00:25:25,367 | INFO | 📦 Loaded cog: admin
+2025-11-28 00:25:25,382 | INFO | 📦 Loaded cog: utility
+2025-11-28 00:25:26,698 | INFO | DiscordHandler attached
+2025-11-28 00:25:26,698 | INFO | Dashboard scheduled on 0.0.0.0:8080
+2025-11-28 00:25:31,452 | INFO | ✅ Logged in as Entrophy#6059 (ID: 1320377919817781248)
+2025-11-28 00:25:32,080 | INFO | 🔁 Synced 6 slash commands
+2025-11-28 00:25:32,082 | INFO |   - ping: global
+2025-11-28 00:25:32,082 | INFO |   - say: global
+2025-11-28 00:25:32,083 | INFO |   - uptime: global
+2025-11-28 00:25:32,083 | INFO |   - rtclock: global
+2025-11-28 00:25:32,084 | INFO |   - usr: global
+2025-11-28 00:25:32,085 | INFO |   - User Info: global
+2025-11-28 00:25:32,086 | INFO | 🔁 Slash commands synced.
+2025-11-28 00:26:08,389 | INFO | 📦 Loaded cog: general
+2025-11-28 00:26:08,392 | INFO | 📦 Loaded cog: client
+2025-11-28 00:26:08,400 | INFO | 📦 Loaded cog: moderation
+2025-11-28 00:26:08,462 | INFO | 📦 Loaded cog: owner
+2025-11-28 00:26:08,467 | INFO | 📦 Loaded cog: admin
+2025-11-28 00:26:08,474 | INFO | 📦 Loaded cog: utility
+2025-11-28 00:26:09,773 | INFO | DiscordHandler attached
+2025-11-28 00:26:09,774 | INFO | Dashboard scheduled on 0.0.0.0:8080
+2025-11-28 00:26:12,623 | INFO | ✅ Logged in as Entrophy#6059 (ID: 1320377919817781248)
+2025-11-28 00:26:13,144 | INFO | 🔁 Synced 6 slash commands
+2025-11-28 00:26:13,144 | INFO |   - ping: global
+2025-11-28 00:26:13,146 | INFO |   - say: global
+2025-11-28 00:26:13,147 | INFO |   - uptime: global
+2025-11-28 00:26:13,148 | INFO |   - rtclock: global
+2025-11-28 00:26:13,149 | INFO |   - usr: global
+2025-11-28 00:26:13,150 | INFO |   - User Info: global
+2025-11-28 00:26:13,151 | INFO | 🔁 Slash commands synced.
+2025-11-28 00:28:05,067 | INFO | 📦 Loaded cog: general
+2025-11-28 00:28:05,070 | INFO | 📦 Loaded cog: client
+2025-11-28 00:28:05,076 | INFO | 📦 Loaded cog: moderation
+2025-11-28 00:28:05,120 | INFO | 📦 Loaded cog: owner
+2025-11-28 00:28:05,135 | INFO | 📦 Loaded cog: admin
+2025-11-28 00:28:05,147 | INFO | 📦 Loaded cog: utility
+2025-11-28 00:28:06,569 | INFO | DiscordHandler attached
+2025-11-28 00:28:06,570 | INFO | Dashboard scheduled on 0.0.0.0:8080
+2025-11-28 00:28:09,520 | INFO | ✅ Logged in as Entrophy#6059 (ID: 1320377919817781248)
+2025-11-28 00:28:10,334 | INFO | 🔁 Synced 6 slash commands
+2025-11-28 00:28:10,335 | INFO |   - ping: global
+2025-11-28 00:28:10,335 | INFO |   - say: global
+2025-11-28 00:28:10,336 | INFO |   - uptime: global
+2025-11-28 00:28:10,336 | INFO |   - rtclock: global
+2025-11-28 00:28:10,337 | INFO |   - usr: global
+2025-11-28 00:28:10,337 | INFO |   - User Info: global
+2025-11-28 00:28:10,338 | INFO | 🔁 Slash commands synced.
