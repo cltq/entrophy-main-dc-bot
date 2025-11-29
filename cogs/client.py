@@ -35,11 +35,7 @@ class Say(commands.Cog):
             try:
                 await interaction.response.send_message(":white_check_mark: Message queued to target channel.", ephemeral=True)
             except Exception:
-                # fallback to a non-ephemeral response if interaction already responded
-                try:
-                    await interaction.followup.send(":white_check_mark: Message queued to target channel.", ephemeral=True)
-                except Exception:
-                    pass
+                pass
 
             try:
                 await target.send(message, allowed_mentions=discord.AllowedMentions.none())
