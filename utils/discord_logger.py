@@ -14,7 +14,7 @@ class DiscordHandler(logging.Handler):
     preserve formatting. Failures are silently ignored to avoid crashing.
     """
 
-    def __init__(self, bot, channel_id, level=logging.INFO):
+    def __init__(self, bot, channel_id, level=logging.NOTSET):
         super().__init__(level)
         self.bot = bot
         self.channel_id = int(channel_id)
@@ -23,6 +23,10 @@ class DiscordHandler(logging.Handler):
         self._lock = asyncio.Lock()
         self._last_message = None
         self._buffer = ""
+        # Ensure a reasonable default formatter if not provided later
+        if not self.formatter:
+            fmt = logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s')
+            self.setFormatter(fmt)
 
     async def start(self):
         """Start the background sender task from an async context."""
@@ -92,27 +96,27 @@ class DiscordHandler(logging.Handler):
 
     def emit(self, record: logging.LogRecord) -> None:
         try:
+            # format the record (includes exc_info if present)
             msg = self.format(record)
             # Put message into the queue in a thread-safe way
+            loop = None
             try:
                 loop = asyncio.get_running_loop()
             except RuntimeError:
-                # No running loop in this thread; try to get the bot loop if available
+                # No running loop in this thread; try to get the bot.loop
                 loop = getattr(self.bot, 'loop', None)
 
             if loop is None or (hasattr(loop, 'is_closed') and loop.is_closed()):
-                # Can't enqueue, drop the message to avoid blocking
+                # Can't enqueue safely; drop silently to avoid blocking
                 return
 
             try:
-                # If the loop is running in another thread, use call_soon_threadsafe
-                if loop.is_running():
+                if getattr(loop, 'is_running', lambda: False)():
                     loop.call_soon_threadsafe(self.queue.put_nowait, msg)
                 else:
-                    # Synchronous context but loop exists; schedule put via create_task
                     asyncio.run_coroutine_threadsafe(self.queue.put(msg), loop)
             except Exception:
-                # Last-resort: ignore to keep logging from raising
+                # If we cannot enqueue, avoid raising from logging
                 pass
         except Exception:
             # don't propagate logging errors
