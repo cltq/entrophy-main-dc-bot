@@ -185,7 +185,14 @@ async def on_command(ctx):
 
     user_str = format_user(ctx.author)
     channel_str, guild_str = format_channel_and_guild_from_ctx(ctx)
-    logger.info(f"[{timestamp}] 📝 Command: {botprefix}{command} — User: {user_str} — Guild: {guild_str} — Channel: {channel_str} — Args: {args}")
+    msg = f"[{timestamp}] 📝 Command: {botprefix}{command} — User: {user_str} — Guild: {guild_str} — Channel: {channel_str} — Args: {args}"
+    extra = {
+        'user': ctx.author,
+        'command': getattr(ctx.command, 'qualified_name', getattr(ctx.command, 'name', command)),
+        'channel': ctx.channel,
+        'guild': ctx.guild,
+    }
+    logger.info(msg, extra=extra)
 
 @bot.event
 async def on_app_command_completion(interaction: discord.Interaction, command):
@@ -197,7 +204,15 @@ async def on_app_command_completion(interaction: discord.Interaction, command):
 
     user_str = format_user(interaction.user)
     channel_str, guild_str = format_channel_and_guild_from_interaction(interaction)
-    logger.info(f"[{timestamp}] ⚡ Slash Command: /{cmd_name} — User: {user_str} — Guild: {guild_str} — Channel: {channel_str}")
+    msg = f"[{timestamp}] ⚡ Slash Command: /{cmd_name} — User: {user_str} — Guild: {guild_str} — Channel: {channel_str}"
+    extra = {
+        'user': interaction.user,
+        'command': cmd_name,
+        'channel': interaction.channel,
+        'guild': interaction.guild,
+        'interaction': interaction,
+    }
+    logger.info(msg, extra=extra)
 
 # ---------- ERROR HANDLER ----------
 @bot.event
@@ -207,13 +222,13 @@ async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         return
     elif isinstance(error, commands.MissingPermissions):
-        logger.warning(f"[{timestamp}] ⚠️ {ctx.author} tried to use {ctx.command.name} without permissions")
+        logger.warning(f"[{timestamp}] ⚠️ {ctx.author} tried to use {ctx.command.name} without permissions", extra={'user': ctx.author, 'command': getattr(ctx.command, 'name', None), 'channel': ctx.channel, 'guild': ctx.guild})
         await ctx.send("⚠️ You lack permissions to use this command.")
     elif isinstance(error, commands.NotOwner):
-        logger.warning(f"[{timestamp}] ❌ {ctx.author} tried to use owner-only command: {ctx.command.name}")
+        logger.warning(f"[{timestamp}] ❌ {ctx.author} tried to use owner-only command: {ctx.command.name}", extra={'user': ctx.author, 'command': getattr(ctx.command, 'name', None), 'channel': ctx.channel, 'guild': ctx.guild})
         await ctx.send("❌ This command is restricted to the bot owner.")
     else:
-        logger.exception(f"[{timestamp}] ❌ Error in {ctx.command.name}: {error}")
+        logger.exception(f"[{timestamp}] ❌ Error in {ctx.command.name}: {error}", extra={'user': ctx.author, 'command': getattr(ctx.command, 'name', None), 'channel': ctx.channel, 'guild': ctx.guild})
         await ctx.send(f"❌ Error: `{error}`")
         raise error
 

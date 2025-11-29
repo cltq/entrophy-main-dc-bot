@@ -108,6 +108,30 @@ class Utility(commands.Cog):
         embed.add_field(name="🆔 User ID", value=f"||`{user.id}`||", inline=True)
         embed.add_field(name="🤖 Bot", value="Yes" if user.bot else "No", inline=True)
 
+        # Badges (public flags)
+        try:
+            flags = getattr(user, 'public_flags', None)
+            badges = []
+            if flags is not None:
+                # Known mapping of PublicUserFlags attributes to friendly names
+                flag_map = [
+                    ('staff', 'Discord Staff'),
+                    ('partner', 'Partner'),
+                    ('hypesquad', 'HypeSquad'),
+                    ('bug_hunter', 'Bug Hunter'),
+                    ('early_supporter', 'Early Supporter'),
+                    ('verified_bot_developer', 'Verified Bot Dev'),
+                    ('certified_moderator', 'Certified Moderator'),
+                    ('active_developer', 'Active Developer'),
+                ]
+                for attr, label in flag_map:
+                    if getattr(flags, attr, False):
+                        badges.append(label)
+            if badges:
+                embed.add_field(name="🎖️ Badges", value=", ".join(badges), inline=False)
+        except Exception:
+            pass
+
         # Dates
         created_at = discord.utils.format_dt(user.created_at, style='F')
         created_at_relative = discord.utils.format_dt(user.created_at, style='R')
@@ -126,6 +150,22 @@ class Utility(commands.Cog):
                 value=f"{joined_at}\n{joined_at_relative}",
                 inline=False
             )
+
+        # Pronouns (best-effort: Discord may expose via profile/pronouns depending on API)
+        try:
+            pronouns = None
+            # try common attribute locations
+            pronouns = getattr(user, 'pronouns', None)
+            if pronouns is None and hasattr(user, 'profile'):
+                try:
+                    prof = getattr(user, 'profile')
+                    pronouns = getattr(prof, 'pronouns', None)
+                except Exception:
+                    pronouns = None
+            if pronouns:
+                embed.add_field(name="🏷️ Pronouns", value=str(pronouns), inline=True)
+        except Exception:
+            pass
 
         # Roles (only in guilds)
         if member:
@@ -149,6 +189,20 @@ class Utility(commands.Cog):
                 value=status_emoji.get(member.status, "❓ Unknown"),
                 inline=True
             )
+            # Custom Status (if set)
+            try:
+                custom = None
+                for a in member.activities:
+                    # discord.CustomActivity may be present or ActivityType.custom
+                    if getattr(a, 'type', None) == discord.ActivityType.custom or a.__class__.__name__ == 'CustomActivity':
+                        # a.state holds the custom status text
+                        custom = getattr(a, 'state', None) or getattr(a, 'name', None)
+                        if custom:
+                            break
+                if custom:
+                    embed.add_field(name="💬 Custom Status", value=str(custom), inline=True)
+            except Exception:
+                pass
 
             # Top Role (only in guilds)
             if member.top_role.name != "@everyone":
@@ -158,9 +212,23 @@ class Utility(commands.Cog):
                     inline=True
                 )
 
+            # Guild tag / server display name
+            try:
+                display = member.display_name
+                guild_tag = f"{display}#{user.discriminator if hasattr(user, 'discriminator') else '----'}"
+                embed.add_field(name="🏷️ Guild Tag", value=guild_tag, inline=True)
+            except Exception:
+                pass
+
         embed.set_footer(text=f"Requested by {requester}", icon_url=requester.display_avatar.url)
 
         return embed
+    
+    @discord.app_commands.command(name="dashboard", description="Send the Bot's Dashboard link.")
+    @discord.app_commands.allowed_installs(guilds=True, users=True)
+    @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+    async def uptime(self, ctx):
+        await ctx.send(f"⏱️ Bot Dashboard: https://entrophy-main-dc-bot.onrender.com")
 
 async def setup(bot):
     await bot.add_cog(Utility(bot))

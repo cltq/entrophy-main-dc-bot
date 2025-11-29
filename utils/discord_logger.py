@@ -97,7 +97,13 @@ class DiscordHandler(logging.Handler):
     def emit(self, record: logging.LogRecord) -> None:
         try:
             # format the record (includes exc_info if present)
-            msg = self.format(record)
+            base = self.format(record)
+            # append contextual info when available on the record
+            extra = self._format_record_extra(record)
+            if extra:
+                msg = f"{base}\n{extra}"
+            else:
+                msg = base
             # Put message into the queue in a thread-safe way
             loop = None
             try:
@@ -121,6 +127,60 @@ class DiscordHandler(logging.Handler):
         except Exception:
             # don't propagate logging errors
             pass
+
+    def _format_record_extra(self, record: logging.LogRecord) -> str:
+        parts = []
+        # Common possible attributes
+        user = getattr(record, 'user', None) or getattr(record, 'author', None)
+        if user is not None:
+            try:
+                # discord objects have 'name' and 'discriminator' or 'display_name'
+                if hasattr(user, 'name') and hasattr(user, 'discriminator'):
+                    parts.append(f"User: {getattr(user, 'name')}#{getattr(user, 'discriminator')} ({getattr(user, 'id', '?')})")
+                elif hasattr(user, 'display_name'):
+                    parts.append(f"User: {getattr(user, 'display_name')} ({getattr(user, 'id', '?')})")
+                else:
+                    parts.append(f"User: {str(user)}")
+            except Exception:
+                parts.append(f"User: {str(user)}")
+
+        # Command / interaction
+        cmd = getattr(record, 'command', None) or getattr(record, 'cmd', None)
+        if cmd is not None:
+            try:
+                parts.append(f"Command: {str(cmd)}")
+            except Exception:
+                parts.append(f"Command: {repr(cmd)}")
+
+        interaction = getattr(record, 'interaction', None)
+        if interaction is not None:
+            try:
+                parts.append(f"Interaction: {getattr(interaction, 'type', repr(interaction))} by {getattr(interaction, 'user', getattr(interaction, 'author', 'unknown'))}")
+            except Exception:
+                parts.append(f"Interaction: {repr(interaction)}")
+
+        channel = getattr(record, 'channel', None)
+        if channel is not None:
+            try:
+                parts.append(f"Channel: {getattr(channel, 'name', str(channel))} ({getattr(channel, 'id', '?')})")
+            except Exception:
+                parts.append(f"Channel: {str(channel)}")
+
+        guild = getattr(record, 'guild', None)
+        if guild is not None:
+            try:
+                parts.append(f"Guild: {getattr(guild, 'name', str(guild))} ({getattr(guild, 'id', '?')})")
+            except Exception:
+                parts.append(f"Guild: {str(guild)}")
+
+        # ensure a timestamp is present (format uses asctime but include ISO for clarity)
+        try:
+            import datetime
+            parts.append(f"Time: {datetime.datetime.utcnow().isoformat()}Z")
+        except Exception:
+            pass
+
+        return "\n".join(parts)
 
     def close(self) -> None:
         try:
