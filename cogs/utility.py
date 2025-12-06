@@ -227,8 +227,8 @@ class Utility(commands.Cog):
     @discord.app_commands.command(name="dashboard", description="Send the Bot's Dashboard link.")
     @discord.app_commands.allowed_installs(guilds=True, users=True)
     @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
-    async def uptime(self, ctx):
-        await ctx.send(f"⏱️ Bot Dashboard: https://entrophy-main-dc-bot.onrender.com")
+    async def dashboard(self, interaction: discord.Interaction):
+        await interaction.response.send_message(f"⏱️ Bot Dashboard: https://entrophy-main-dc-bot.onrender.com")
 
 async def setup(bot):
     await bot.add_cog(Utility(bot))
