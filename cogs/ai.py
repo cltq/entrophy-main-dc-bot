@@ -315,8 +315,8 @@ class AI(commands.Cog):
         save_config(config)
         
         await interaction.response.send_message(f"✅ ลบการตั้งค่าห้องนี้เรียบร้อยแล้ว")
-
-    @app_commands.command(name="ask", description="ถามคำถาม AI พร้อมกำหนดบุคลิก/คำสั่งเบื้องต้น")
+        
+    @app_commands.command(name="ask", description="Ask AI a question/ถามคำถาม AI")
     @discord.app_commands.allowed_installs(guilds=True, users=True)
     @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     @app_commands.describe(
