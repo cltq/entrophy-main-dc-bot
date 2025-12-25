@@ -3,3 +3,4 @@ pytz
 flask
 dotenv
 aiohttp
+google-generativeai
