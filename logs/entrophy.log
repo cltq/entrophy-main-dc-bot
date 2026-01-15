@@ -227,3 +227,95 @@
 2025-11-28 00:28:10,337 | INFO |   - usr: global
 2025-11-28 00:28:10,337 | INFO |   - User Info: global
 2025-11-28 00:28:10,338 | INFO | 🔁 Slash commands synced.
+2025-12-26 13:30:10,448 | INFO | 📦 Loaded cog: general
+2025-12-26 13:30:10,453 | INFO | 📦 Loaded cog: client
+2025-12-26 13:30:10,463 | INFO | 📦 Loaded cog: moderation
+2025-12-26 13:30:10,504 | INFO | 📦 Loaded cog: owner
+2025-12-26 13:30:10,507 | INFO | 📦 Loaded cog: admin
+2025-12-26 13:30:10,515 | INFO | 📦 Loaded cog: utility
+2025-12-26 13:30:11,823 | INFO | 📦 Loaded cog: ai
+2025-12-26 13:30:14,354 | INFO | DiscordHandler attached
+2025-12-26 13:30:14,355 | INFO | Dashboard scheduled on 0.0.0.0:8080
+2025-12-26 13:30:17,486 | INFO | ✅ Logged in as Fumi#6059 (ID: 1320377919817781248)
+2025-12-26 13:30:18,044 | INFO | 🔁 Synced 11 slash commands
+2025-12-26 13:30:18,044 | INFO |   - ping: global
+2025-12-26 13:30:18,045 | INFO |   - say: global
+2025-12-26 13:30:18,045 | INFO |   - uptime: global
+2025-12-26 13:30:18,045 | INFO |   - rtclock: global
+2025-12-26 13:30:18,046 | INFO |   - usr: global
+2025-12-26 13:30:18,046 | INFO |   - dashboard: global
+2025-12-26 13:30:18,046 | INFO |   - setup: global
+2025-12-26 13:30:18,047 | INFO |   - list_channels: global
+2025-12-26 13:30:18,047 | INFO |   - remove_channel: global
+2025-12-26 13:30:18,047 | INFO |   - ask: global
+2025-12-26 13:30:18,047 | INFO |   - User Info: global
+2025-12-26 13:30:18,048 | INFO | 🔁 Slash commands synced.
+2025-12-26 14:06:30,034 | INFO | 📦 Loaded cog: general
+2025-12-26 14:06:30,053 | INFO | 📦 Loaded cog: client
+2025-12-26 14:06:30,066 | INFO | 📦 Loaded cog: moderation
+2025-12-26 14:06:30,115 | INFO | 📦 Loaded cog: owner
+2025-12-26 14:06:30,121 | INFO | 📦 Loaded cog: admin
+2025-12-26 14:06:30,134 | INFO | 📦 Loaded cog: utility
+2025-12-26 14:06:31,295 | INFO | 📦 Loaded cog: ai
+2025-12-26 14:06:32,308 | INFO | DiscordHandler attached
+2025-12-26 14:06:32,308 | INFO | Dashboard scheduled on 0.0.0.0:8080
+2025-12-26 14:06:35,242 | INFO | ✅ Logged in as Fumi#6059 (ID: 1320377919817781248)
+2025-12-26 14:06:36,266 | INFO | 🔁 Synced 11 slash commands
+2025-12-26 14:06:36,266 | INFO |   - ping: global
+2025-12-26 14:06:36,267 | INFO |   - say: global
+2025-12-26 14:06:36,268 | INFO |   - uptime: global
+2025-12-26 14:06:36,269 | INFO |   - rtclock: global
+2025-12-26 14:06:36,270 | INFO |   - usr: global
+2025-12-26 14:06:36,270 | INFO |   - dashboard: global
+2025-12-26 14:06:36,271 | INFO |   - setup: global
+2025-12-26 14:06:36,272 | INFO |   - list_channels: global
+2025-12-26 14:06:36,272 | INFO |   - remove_channel: global
+2025-12-26 14:06:36,273 | INFO |   - ask: global
+2025-12-26 14:06:36,273 | INFO |   - User Info: global
+2025-12-26 14:06:36,274 | INFO | 🔁 Slash commands synced.
+2025-12-27 06:51:50,485 | INFO | 📦 Loaded cog: general
+2025-12-27 06:51:50,498 | INFO | 📦 Loaded cog: client
+2025-12-27 06:51:50,511 | INFO | 📦 Loaded cog: moderation
+2025-12-27 06:51:50,723 | INFO | 📦 Loaded cog: owner
+2025-12-27 06:51:50,730 | INFO | 📦 Loaded cog: admin
+2025-12-27 06:51:50,741 | INFO | 📦 Loaded cog: utility
+2025-12-27 06:51:56,070 | INFO | 📦 Loaded cog: ai
+2025-12-27 06:51:57,375 | INFO | DiscordHandler attached
+2025-12-27 06:51:57,375 | INFO | Dashboard scheduled on 0.0.0.0:8080
+2025-12-27 06:52:00,391 | INFO | ✅ Logged in as Fumi#6059 (ID: 1320377919817781248)
+2025-12-27 06:52:00,987 | INFO | 🔁 Synced 11 slash commands
+2025-12-27 06:52:00,987 | INFO |   - ping: global
+2025-12-27 06:52:00,989 | INFO |   - say: global
+2025-12-27 06:52:00,991 | INFO |   - uptime: global
+2025-12-27 06:52:00,992 | INFO |   - rtclock: global
+2025-12-27 06:52:00,993 | INFO |   - usr: global
+2025-12-27 06:52:00,994 | INFO |   - dashboard: global
+2025-12-27 06:52:00,996 | INFO |   - setup: global
+2025-12-27 06:52:00,997 | INFO |   - list_channels: global
+2025-12-27 06:52:00,999 | INFO |   - remove_channel: global
+2025-12-27 06:52:01,001 | INFO |   - ask: global
+2025-12-27 06:52:01,004 | INFO |   - User Info: global
+2025-12-27 06:52:01,004 | INFO | 🔁 Slash commands synced.
+2026-01-10 10:53:26,937 | INFO | 📦 Loaded cog: general
+2026-01-10 10:53:27,026 | INFO | 📦 Loaded cog: client
+2026-01-10 10:53:27,036 | INFO | 📦 Loaded cog: moderation
+2026-01-10 10:53:27,639 | INFO | 📦 Loaded cog: owner
+2026-01-10 10:53:27,651 | INFO | 📦 Loaded cog: admin
+2026-01-10 10:53:27,668 | INFO | 📦 Loaded cog: utility
+2026-01-10 10:53:53,133 | INFO | 📦 Loaded cog: ai
+2026-01-10 10:53:55,960 | INFO | DiscordHandler attached
+2026-01-10 10:53:55,979 | INFO | Dashboard scheduled on 0.0.0.0:8080
+2026-01-10 10:53:59,574 | INFO | ✅ Logged in as Fumi#6059 (ID: 1320377919817781248)
+2026-01-10 10:54:00,355 | INFO | 🔁 Synced 11 slash commands
+2026-01-10 10:54:00,356 | INFO |   - ping: global
+2026-01-10 10:54:00,356 | INFO |   - say: global
+2026-01-10 10:54:00,356 | INFO |   - uptime: global
+2026-01-10 10:54:00,356 | INFO |   - rtclock: global
+2026-01-10 10:54:00,357 | INFO |   - usr: global
+2026-01-10 10:54:00,357 | INFO |   - dashboard: global
+2026-01-10 10:54:00,358 | INFO |   - setup: global
+2026-01-10 10:54:00,358 | INFO |   - list_channels: global
+2026-01-10 10:54:00,358 | INFO |   - remove_channel: global
+2026-01-10 10:54:00,359 | INFO |   - ask: global
+2026-01-10 10:54:00,359 | INFO |   - User Info: global
+2026-01-10 10:54:00,359 | INFO | 🔁 Slash commands synced.
