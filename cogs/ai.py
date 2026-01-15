@@ -1,7 +1,7 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-import google.generativeai as genai
+import google.genai as genai
 import json
 import os
 from typing import Literal
@@ -50,9 +50,10 @@ class AI(commands.Cog):
         self.bot = bot
         # ตั้งค่า Gemini เมื่อโหลด Cog
         if GEMINI_API_KEY:
-            genai.configure(api_key=GEMINI_API_KEY)
+            self.client = genai.Client(api_key=GEMINI_API_KEY)
         else:
             print("⚠️ Warning: GEMINI_API_KEY is missing in cogs/ai.py")
+            self.client = None
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -71,22 +72,24 @@ class AI(commands.Cog):
         
         # ตรวจสอบว่า channel นี้ถูก setup ไว้หรือไม่
         if channel_id in config.get("channels", {}):
+            if not self.client:
+                await message.channel.send("❌ AI client not configured. Please check GEMINI_API_KEY.")
+                return
+                
             async with message.channel.typing():
                 try:
                     # ดึง Custom Prompt ของห้องนี้
                     channel_config = config["channels"][channel_id]
                     system_prompt = channel_config.get("prompt", INSTRUCTIONS_EN)
                     
-                    config_gemini = {}
-                    
-                    # สร้าง Model Object
-                    model = genai.GenerativeModel(
-                        model_name=AIMODEL, 
-                        system_instruction=system_prompt, 
-                        generation_config=config_gemini
+                    # สร้าง Model Object และเรียกใช้งาน
+                    response = self.client.models.generate_content(
+                        model=AIMODEL,
+                        contents=message.content,
+                        config=genai.GenerateContentConfig(
+                            system_instruction=system_prompt
+                        )
                     )
-                    
-                    response = model.generate_content(message.content)
                     response_text = response.text
                     
                     if len(response_text) > 2000:
@@ -204,18 +207,21 @@ class AI(commands.Cog):
             await ctx.send("❌ กรุณาใส่คำถาม!")
             return
         
+        if not self.client:
+            await ctx.send("❌ AI client not configured. Please check GEMINI_API_KEY.")
+            return
+        
         async with ctx.typing():
             try:
                 final_prompt = get_instruction_by_language(language)
-                config_gemini = {} 
                 
-                generative_model = genai.GenerativeModel(
-                    model_name=model_name, 
-                    system_instruction=final_prompt, 
-                    generation_config=config_gemini
+                response = self.client.models.generate_content(
+                    model=model_name,
+                    contents=question,
+                    config=genai.GenerateContentConfig(
+                        system_instruction=final_prompt
+                    )
                 )
-
-                response = generative_model.generate_content(question)
                 response_text = response.text
 
                 header = f"**Q:** {question}\n"
@@ -335,21 +341,23 @@ class AI(commands.Cog):
     ):
         await interaction.response.defer()
 
+        if not self.client:
+            await interaction.followup.send("❌ AI client not configured. Please check GEMINI_API_KEY.")
+            return
+
         try:
             if custom_prompt:
                 final_prompt = custom_prompt.strip()
             else:
                 final_prompt = get_instruction_by_language(language)
             
-            config_gemini = {} 
-            
-            generative_model = genai.GenerativeModel(
-                model_name=model, 
-                system_instruction=final_prompt, 
-                generation_config=config_gemini
+            response = self.client.models.generate_content(
+                model=model,
+                contents=question,
+                config=genai.GenerateContentConfig(
+                    system_instruction=final_prompt
+                )
             )
-
-            response = generative_model.generate_content(question)
             response_text = response.text
 
             header = f"**Q:** {question}\n"

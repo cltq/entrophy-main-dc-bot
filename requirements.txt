@@ -3,6 +3,6 @@ pytz
 flask
 dotenv
 aiohttp
-google-generativeai
+google-genai
 qrcode
 Pillow

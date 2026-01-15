@@ -58,20 +58,21 @@ class Owner(commands.Cog):
     @commands.is_owner()
     async def bot(self, ctx, action: str, *params):
         """Unified owner command. Usage examples:
-        - .bot status <text>
-        - .bot setstate <online|idle|dnd|invisible>
-        - .bot resume|pause
-        - .bot setname <new name>
-        - .bot setavatar <url or attach image>
-        - .bot setbanner <url or attach image>
-        - .bot removebanner
-        - .bot profile
-        - .bot sync [current|global|remove|guild_id ...]
-        - .bot reload <cog>
-        - .bot load <cog>
-        - .bot unload <cog>
-        - .bot cogs
-        - .bot shutdown
+        - bot status <text>
+        - bot setstate <online|idle|dnd|invisible>
+        - bot resume|pause
+        - bot setname <new name>
+        - bot setavatar <url or attach image>
+        - bot setbanner <url or attach image>
+        - bot removebanner
+        - bot profile
+        - bot sync [current|global|remove|guild_id ...]
+        - bot reload <cog>
+        - bot load <cog>
+        - bot unload <cog>
+        - bot cogs
+        - bot shutdown
+        - bot restart
         """
         action = action.lower()
 
@@ -301,6 +302,12 @@ class Owner(commands.Cog):
             await ctx.send("🛑 Shutting down bot...")
             await self.bot.close()
             return
+        
+        if action in ("restart", "reboot"):
+            await ctx.send("🔄 Restarting bot...")
+            await self.bot.close()
+            # Note: Actual restart logic should be handled by an external process manager
+            os.execv(sys.executable, [sys.executable] + sys.argv)
 
         # ----- UNKNOWN -----
         await ctx.send("❌ Unknown action. Use `!bot help` for usage.")
