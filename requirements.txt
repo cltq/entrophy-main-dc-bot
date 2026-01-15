@@ -4,3 +4,5 @@ flask
 dotenv
 aiohttp
 google-generativeai
+qrcode
+Pillow
