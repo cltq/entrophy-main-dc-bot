@@ -1,14 +1,88 @@
 import discord
 from discord.ext import commands
+import discord.app_commands
 import os
 import io
+import re
 import qrcode
 from dotenv import load_dotenv
 
 load_dotenv()
 
+# ======================================================
+# PromptPay EMV helpers (equivalent to promptpay-qr npm)
+# ======================================================
+
+def _crc16_xmodem(data: bytes) -> str:
+    crc = 0x0000
+    poly = 0x1021
+    for b in data:
+        crc ^= (b << 8)
+        for _ in range(8):
+            if crc & 0x8000:
+                crc = ((crc << 1) & 0xFFFF) ^ poly
+            else:
+                crc = (crc << 1) & 0xFFFF
+    return f"{crc:04X}"
+
+def _tlv(tag: str, value: str) -> str:
+    return f"{tag}{len(value):02d}{value}"
+
+def _normalize_promptpay_id(pid: str) -> str:
+    digits = re.sub(r"\D", "", pid)
+    if len(digits) == 10 and digits.startswith("0"):
+        return "66" + digits[1:]  # Thai phone number
+    return digits               # National ID or e-wallet
+
+def _generate_promptpay_payload(pid: str, amount: float | None) -> str:
+    pid = _normalize_promptpay_id(pid)
+
+    payload = ""
+    payload += _tlv("00", "01")                       # Payload Format
+    payload += _tlv("01", "12" if amount else "11")   # Dynamic / Static
+
+    merchant = ""
+    merchant += _tlv("00", "A000000677010111")        # PromptPay AID
+    merchant += _tlv("01", pid)                       # PromptPay ID
+    payload += _tlv("29", merchant)
+
+    payload += _tlv("53", "764")                      # THB
+
+    if amount is not None:
+        payload += _tlv("54", f"{amount:.2f}")
+
+    payload += _tlv("58", "TH")                       # Country
+
+    payload_crc = payload + "6304"
+    payload += _tlv("63", _crc16_xmodem(payload_crc.encode()))
+
+    return payload
+
+
+def generate_promptpay_qr(phone_or_id: str, amount: float = None) -> discord.File:
+    payload = _generate_promptpay_payload(phone_or_id, amount)
+
+    qr = qrcode.QRCode(
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=10,
+        border=4
+    )
+    qr.add_data(payload)
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white")
+
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+
+    return discord.File(buffer, filename="promptpay_qr.png")
+
+# ======================================================
+# Discord UI
+# ======================================================
+
 class PromptPayQRView(discord.ui.View):
-    """View for PromptPay QR code interaction"""
     def __init__(self, user_id: int, promptpay_number: str, amount: float = None):
         super().__init__(timeout=300)
         self.user_id = user_id
@@ -16,24 +90,20 @@ class PromptPayQRView(discord.ui.View):
         self.amount = amount
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        """Only allow the user who initiated the command to interact"""
         return interaction.user.id == self.user_id
 
     @discord.ui.button(label="Regenerate QR", style=discord.ButtonStyle.primary, emoji="🔄")
     async def regenerate_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """Regenerate the QR code"""
         qr_image = generate_promptpay_qr(self.promptpay_number, self.amount)
         await interaction.response.edit_message(attachments=[qr_image])
 
     @discord.ui.button(label="Close", style=discord.ButtonStyle.danger, emoji="❌")
     async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """Close the menu"""
         await interaction.response.defer()
         await interaction.delete_original_response()
 
 
 class PromptPayNumberSelect(discord.ui.View):
-    """Select view for choosing PromptPay number"""
     def __init__(self, numbers: dict, user_id: int, split: int = None, amount: float = None):
         super().__init__(timeout=300)
         self.numbers = numbers
@@ -42,8 +112,7 @@ class PromptPayNumberSelect(discord.ui.View):
         self.amount = amount
         self.response_sent = False
 
-        # Create select dropdown
-        options = [
+        self.number_select.options = [
             discord.SelectOption(
                 label=f"Account {i + 1}: {num[:2]}****{num[-4:]}",
                 description=f"PromptPay: {num}",
@@ -53,28 +122,25 @@ class PromptPayNumberSelect(discord.ui.View):
             for i, num in enumerate(numbers.keys())
         ]
 
-        self.number_select.options = options
-
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        """Only allow the user who initiated the command to interact"""
         return interaction.user.id == self.user_id
 
     @discord.ui.select(placeholder="Select a PromptPay number...", min_values=1, max_values=1)
     async def number_select(self, interaction: discord.Interaction, select: discord.ui.Select):
-        """Handle PromptPay number selection"""
         selected_number = select.values[0]
-
-        # Generate QR code
         qr_image = generate_promptpay_qr(selected_number, self.amount)
 
-        # Create embed
         embed = discord.Embed(
             title="💳 PromptPay QR Code",
-            color=discord.Color.green(),
-            description="Scan this QR code to pay via PromptPay"
+            description="Scan this QR code to pay via PromptPay",
+            color=discord.Color.green()
         )
 
-        embed.add_field(name="PromptPay Number", value=f"`{selected_number[:2]}****{selected_number[-4:]}`", inline=True)
+        embed.add_field(
+            name="PromptPay Number",
+            value=f"`{selected_number[:2]}****{selected_number[-4:]}`",
+            inline=True
+        )
 
         if self.amount:
             embed.add_field(name="Amount", value=f"฿ {self.amount:,.2f}", inline=True)
@@ -82,8 +148,11 @@ class PromptPayNumberSelect(discord.ui.View):
         if self.split:
             embed.add_field(name="Split", value=f"{self.split} ways", inline=True)
             if self.amount:
-                per_person = self.amount / self.split
-                embed.add_field(name="Per Person", value=f"฿ {per_person:,.2f}", inline=True)
+                embed.add_field(
+                    name="Per Person",
+                    value=f"฿ {self.amount / self.split:,.2f}",
+                    inline=True
+                )
 
         embed.set_image(url="attachment://promptpay_qr.png")
         embed.set_footer(text="PromptPay Payment Request")
@@ -99,225 +168,67 @@ class PromptPayNumberSelect(discord.ui.View):
         else:
             await interaction.response.defer()
 
-
-def generate_promptpay_qr(phone_or_id: str, amount: float = None) -> discord.File:
-    """
-    Generate a PromptPay QR code
-    
-    Args:
-        phone_or_id: Phone number (10 digits) or ID (13 digits)
-        amount: Optional amount in THB
-    
-    Returns:
-        discord.File: QR code as PNG file
-    """
-    # Clean the input
-    phone_or_id = phone_or_id.replace("-", "").replace(" ", "")
-
-    # Determine type (0 for phone, 1 for ID)
-    if len(phone_or_id) == 10:
-        # Phone number format: 0XXXXXXXXX
-        qr_type = "0"
-    elif len(phone_or_id) == 13:
-        # ID number format
-        qr_type = "1"
-    else:
-        raise ValueError("PromptPay must be 10-digit phone number or 13-digit ID")
-
-    # Build PromptPay string
-    # Format: 00020126360014com.PromptPay0...
-    # This is a simplified version - full EMV standards apply
-
-    if amount:
-        # Format: 00|0201|26|36|0014|com.PromptPay|00|{type}{data}|54|amount
-        promptpay_data = f"00020126360014com.PromptPay00{qr_type}{phone_or_id}5403{int(amount)}"
-    else:
-        promptpay_data = f"00020126360014com.PromptPay00{qr_type}{phone_or_id}"
-
-    # Generate QR code
-    qr = qrcode.QRCode(
-        version=None,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(promptpay_data)
-    qr.make(fit=True)
-
-    img = qr.make_image(fill_color="black", back_color="white")
-
-    # Convert to file
-    buffer = io.BytesIO()
-    img.save(buffer, format="PNG")
-    buffer.seek(0)
-
-    return discord.File(buffer, filename="promptpay_qr.png")
-
+# ======================================================
+# Cog
+# ======================================================
 
 class Payment(commands.Cog):
-    """Payment commands for PromptPay QR code generation"""
-
     def __init__(self, bot):
         self.bot = bot
-        # Load PromptPay numbers from environment
         self.promptpay_numbers = {}
         self._load_promptpay_numbers()
 
     def _load_promptpay_numbers(self):
-        """Load PromptPay numbers from environment variables"""
         i = 1
         while True:
-            env_key = f"PROMPTPAY_N{i}"
-            number = os.getenv(env_key)
-            if not number:
+            num = os.getenv(f"PROMPTPAY_N{i}")
+            if not num:
                 break
-            self.promptpay_numbers[number] = f"Account {i}"
+            self.promptpay_numbers[num] = f"Account {i}"
             i += 1
 
     @discord.app_commands.command(
         name="promptpay",
-        description="Generate a PromptPay QR code for payment"
+        description="Generate a PromptPay QR code"
     )
-    @discord.app_commands.describe(
-        number="Select account number (1, 2, 3...) - optional, shows selector if not provided",
-        amount="Amount in THB (leave empty for no amount)",
-        split="Number of ways to split the payment (leave empty for no split)",
-        custom_amount="Override amount with custom value (optional)"
-    )
-    @discord.app_commands.allowed_installs(guilds=True, users=True)
-    @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def promptpay(
         self,
         interaction: discord.Interaction,
         number: int = None,
         amount: float = None,
-        split: int = None,
-        custom_amount: float = None
+        split: int = None
     ):
-        """Generate a PromptPay QR code with optional amount and split options"""
-
-        # Check if PromptPay numbers are configured
         if not self.promptpay_numbers:
-            embed = discord.Embed(
-                title="❌ Configuration Error",
-                description="No PromptPay numbers configured. Please add `PROMPTPAY_N1`, `PROMPTPAY_N2`, etc. to your `.env` file.",
-                color=discord.Color.red()
+            await interaction.response.send_message(
+                "❌ No PromptPay numbers configured.",
+                ephemeral=True
             )
-            await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
-        # Use custom amount if provided
-        final_amount = custom_amount or amount
-
-        # Validate split
-        if split and split < 2:
-            embed = discord.Embed(
-                title="❌ Invalid Split",
-                description="Split must be at least 2",
-                color=discord.Color.red()
-            )
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return
-
-        # If number is specified, use that directly
-        if number is not None:
-            # Validate number range
-            if number < 1 or number > len(self.promptpay_numbers):
-                embed = discord.Embed(
-                    title="❌ Invalid Account Number",
-                    description=f"Please select a number between 1 and {len(self.promptpay_numbers)}",
-                    color=discord.Color.red()
-                )
-                await interaction.response.send_message(embed=embed, ephemeral=True)
-                return
-
-            # Get the requested number
-            selected_number = list(self.promptpay_numbers.keys())[number - 1]
-            qr_image = generate_promptpay_qr(selected_number, final_amount)
+        if number:
+            selected = list(self.promptpay_numbers.keys())[number - 1]
+            qr_image = generate_promptpay_qr(selected, amount)
 
             embed = discord.Embed(
                 title="💳 PromptPay QR Code",
-                color=discord.Color.green(),
-                description="Scan this QR code to pay via PromptPay"
+                description="Scan to pay",
+                color=discord.Color.green()
             )
 
-            embed.add_field(name="PromptPay Number", value=f"`{selected_number[:2]}****{selected_number[-4:]}`", inline=True)
-            embed.add_field(name="Account", value=f"#{number}", inline=True)
-
-            if final_amount:
-                embed.add_field(name="Amount", value=f"฿ {final_amount:,.2f}", inline=True)
-
-            if split:
-                embed.add_field(name="Split", value=f"{split} ways", inline=True)
-                if final_amount:
-                    per_person = final_amount / split
-                    embed.add_field(name="Per Person", value=f"฿ {per_person:,.2f}", inline=True)
-
             embed.set_image(url="attachment://promptpay_qr.png")
-            embed.set_footer(text="PromptPay Payment Request")
 
             await interaction.response.send_message(
                 embed=embed,
                 file=qr_image,
-                view=PromptPayQRView(interaction.user.id, selected_number, final_amount),
-                ephemeral=False
-            )
-        elif len(self.promptpay_numbers) == 1:
-            # If only one PromptPay number and no number specified, generate directly
-            selected_number = list(self.promptpay_numbers.keys())[0]
-            qr_image = generate_promptpay_qr(selected_number, final_amount)
-
-            embed = discord.Embed(
-                title="💳 PromptPay QR Code",
-                color=discord.Color.green(),
-                description="Scan this QR code to pay via PromptPay"
-            )
-
-            embed.add_field(name="PromptPay Number", value=f"`{selected_number[:2]}****{selected_number[-4:]}`", inline=True)
-
-            if final_amount:
-                embed.add_field(name="Amount", value=f"฿ {final_amount:,.2f}", inline=True)
-
-            if split:
-                embed.add_field(name="Split", value=f"{split} ways", inline=True)
-                if final_amount:
-                    per_person = final_amount / split
-                    embed.add_field(name="Per Person", value=f"฿ {per_person:,.2f}", inline=True)
-
-            embed.set_image(url="attachment://promptpay_qr.png")
-            embed.set_footer(text="PromptPay Payment Request")
-
-            await interaction.response.send_message(
-                embed=embed,
-                file=qr_image,
-                view=PromptPayQRView(interaction.user.id, selected_number, final_amount),
-                ephemeral=False
+                view=PromptPayQRView(interaction.user.id, selected, amount)
             )
         else:
-            # Show selector dialog if no number specified and multiple numbers available
-            view = PromptPayNumberSelect(self.promptpay_numbers, interaction.user.id, split, final_amount)
-            embed = discord.Embed(
-                title="💳 PromptPay QR Code Generator",
-                description="Select which PromptPay account to use",
-                color=discord.Color.blue()
-            )
-
-            if final_amount:
-                embed.add_field(name="Amount", value=f"฿ {final_amount:,.2f}", inline=True)
-
-            if split:
-                embed.add_field(name="Split", value=f"{split} ways", inline=True)
-                if final_amount:
-                    per_person = final_amount / split
-                    embed.add_field(name="Per Person", value=f"฿ {per_person:,.2f}", inline=True)
-
+            view = PromptPayNumberSelect(self.promptpay_numbers, interaction.user.id, split, amount)
             await interaction.response.send_message(
-                embed=embed,
+                "Select PromptPay account:",
                 view=view,
                 ephemeral=True
             )
 
-
 async def setup(bot):
-    """Load the Payment cog"""
     await bot.add_cog(Payment(bot))
