@@ -7,3 +7,5 @@ utils/__pycache__
 .template.py
 asd
 logs
+docker-compose.yml
+restart_info.json

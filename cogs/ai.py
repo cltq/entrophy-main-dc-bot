@@ -86,9 +86,7 @@ class AI(commands.Cog):
                     response = self.client.models.generate_content(
                         model=AIMODEL,
                         contents=message.content,
-                        config=genai.GenerateContentConfig(
-                            system_instruction=system_prompt
-                        )
+                        config={"system_instruction": system_prompt}
                     )
                     response_text = response.text
                     
@@ -218,9 +216,7 @@ class AI(commands.Cog):
                 response = self.client.models.generate_content(
                     model=model_name,
                     contents=question,
-                    config=genai.GenerateContentConfig(
-                        system_instruction=final_prompt
-                    )
+                    config={"system_instruction": final_prompt}
                 )
                 response_text = response.text
 
@@ -354,9 +350,7 @@ class AI(commands.Cog):
             response = self.client.models.generate_content(
                 model=model,
                 contents=question,
-                config=genai.GenerateContentConfig(
-                    system_instruction=final_prompt
-                )
+                config={"system_instruction": final_prompt}
             )
             response_text = response.text
 
