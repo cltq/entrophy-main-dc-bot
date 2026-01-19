@@ -185,7 +185,7 @@ class PaymentWizard(commands.Cog):
             self.accounts.append(os.getenv(f"PROMPTPAY_N{i}")); i += 1
         if not self.accounts and os.getenv("PROMPTPAY"): self.accounts.append(os.getenv("PROMPTPAY"))
 
-    @discord.app_commands.command(name="promptpay", description="สร้าง QR Code (ส่งแบบสาธารณะในขั้นตอนสุดท้าย)")
+    @discord.app_commands.command(name="pp", description="สร้าง QR Code (ส่งแบบสาธารณะในขั้นตอนสุดท้าย)")
     async def promptpay(self, interaction: discord.Interaction):
         if not self.accounts: return await interaction.response.send_message("❌ ไม่พบการตั้งค่าบัญชี", ephemeral=True)
         view = MainChoiceView(self.accounts, interaction.user)
