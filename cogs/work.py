@@ -1,13 +1,18 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord import app_commands
 import json
 import os
-from datetime import datetime
+import random
+import string
+from datetime import datetime, timedelta
 from typing import Optional, List
 
 # Data file path for persisting todos and notes
 DATA_FILE = "data/user_data.json"
+
+# Temporary note codes storage: {user_id: {"code": "ABC123", "expires_at": datetime}}
+TEMP_NOTE_CODES = {}
 
 class TodoListView(discord.ui.View):
     """Interactive view for todo list management"""
@@ -229,6 +234,48 @@ class NotesView(discord.ui.View):
         await interaction.response.send_message("Select a note to delete:", view=view, ephemeral=True)
 
 
+def generate_temp_code():
+    """Generate a random temporary command code (a-z, A-Z, 0-9)"""
+    characters = string.ascii_letters + string.digits
+    return ''.join(random.choice(characters) for _ in range(10))
+
+
+def create_temp_note_code(user_id: int, duration_minutes: int = 5) -> str:
+    """Create a temporary note code for a user"""
+    code = generate_temp_code()
+    TEMP_NOTE_CODES[user_id] = {
+        "code": code,
+        "expires_at": datetime.now() + timedelta(minutes=duration_minutes)
+    }
+    return code
+
+
+def is_temp_code_valid(user_id: int, code: str) -> bool:
+    """Check if a temporary code is valid and not expired"""
+    if user_id not in TEMP_NOTE_CODES:
+        return False
+    
+    stored = TEMP_NOTE_CODES[user_id]
+    if stored["code"] != code:
+        return False
+    
+    if datetime.now() > stored["expires_at"]:
+        del TEMP_NOTE_CODES[user_id]
+        return False
+    
+    return True
+
+
+def cleanup_expired_codes():
+    """Remove expired temporary codes"""
+    expired_users = [
+        user_id for user_id, data in TEMP_NOTE_CODES.items()
+        if datetime.now() > data["expires_at"]
+    ]
+    for user_id in expired_users:
+        del TEMP_NOTE_CODES[user_id]
+
+
 class NoteActionView(discord.ui.View):
     """View for selecting note action (create, list, delete)"""
     def __init__(self, user_id: int, context):
@@ -242,56 +289,142 @@ class NoteActionView(discord.ui.View):
             await interaction.response.send_message("❌ You can't interact with this!", ephemeral=True)
             return
         
-        # Create a modal for note creation
-        class NoteModal(discord.ui.Modal, title="Create a New Note"):
-            title_input = discord.ui.TextInput(
-                label="Note Title",
-                placeholder="Enter note title...",
-                max_length=256,
-                required=True
-            )
-            content_input = discord.ui.TextInput(
-                label="Note Content",
-                placeholder="Enter note content...",
-                style=discord.TextStyle.long,
-                max_length=4000,
-                required=True
-            )
+        # Selection view for create method
+        class CreateMethodView(discord.ui.View):
+            def __init__(self, user_id, parent_cog):
+                super().__init__(timeout=300)
+                self.user_id = user_id
+                self.parent_cog = parent_cog
+            
+            @discord.ui.button(label="GUI Form", style=discord.ButtonStyle.blurple, emoji="📋")
+            async def gui_method(self, method_interaction: discord.Interaction, button: discord.ui.Button):
+                if method_interaction.user.id != self.user_id:
+                    await method_interaction.response.send_message("❌ Not your action!", ephemeral=True)
+                    return
+                
+                await self._show_gui_method(method_interaction)
+            
+            @discord.ui.button(label="Command Method", style=discord.ButtonStyle.blurple, emoji="💬")
+            async def command_method(self, method_interaction: discord.Interaction, button: discord.ui.Button):
+                if method_interaction.user.id != self.user_id:
+                    await method_interaction.response.send_message("❌ Not your action!", ephemeral=True)
+                    return
+                
+                await self._show_command_method(method_interaction)
+            
+            async def _show_gui_method(self, method_interaction: discord.Interaction):
+                """Show the GUI form method"""
+                # Create a modal for note creation
+                class NoteModal(discord.ui.Modal, title="Create a New Note"):
+                    title_input = discord.ui.TextInput(
+                        label="Note Title",
+                        placeholder="Enter note title...",
+                        max_length=256,
+                        required=True
+                    )
+                    content_input = discord.ui.TextInput(
+                        label="Note Content",
+                        placeholder="Enter note content...",
+                        style=discord.TextStyle.long,
+                        max_length=4000,
+                        required=True
+                    )
 
-            async def on_submit(self, modal_interaction: discord.Interaction):
-                user_id = modal_interaction.user.id
-                notes = load_user_data(user_id, notes=True)
+                    async def on_submit(self, modal_interaction: discord.Interaction):
+                        user_id = modal_interaction.user.id
+                        notes = load_user_data(user_id, notes=True)
+                        
+                        # Get attachments from the parent interaction context
+                        attachments = []
+                        if hasattr(self, 'stored_attachments'):
+                            attachments = self.stored_attachments
+                        
+                        note_item = {
+                            "title": self.title_input.value,
+                            "content": self.content_input.value,
+                            "created_at": datetime.now().isoformat(),
+                            "attachments": attachments
+                        }
+                        notes.append(note_item)
+                        save_user_data(user_id, notes, notes=True)
+                        
+                        embed = discord.Embed(
+                            title="📝 Note Created!",
+                            description=f"**{self.title_input.value}**\n\n{self.content_input.value[:200]}...",
+                            color=discord.Color.gold()
+                        )
+                        if attachments:
+                            attachment_info = "\n".join([f"📎 {att['filename']}" for att in attachments])
+                            embed.add_field(name="Attachments", value=attachment_info, inline=False)
+                        
+                        await modal_interaction.response.send_message(embed=embed, ephemeral=True)
+
+                # Check if the user has recent attachments
+                class AttachmentView(discord.ui.View):
+                    def __init__(self, user_id):
+                        super().__init__(timeout=300)
+                        self.user_id = user_id
+                        self.attachments = []
+                    
+                    @discord.ui.button(label="Continue to Create", style=discord.ButtonStyle.green)
+                    async def continue_create(self, att_interaction: discord.Interaction, button: discord.ui.Button):
+                        if att_interaction.user.id != self.user_id:
+                            await att_interaction.response.send_message("❌ Not your action!", ephemeral=True)
+                            return
+                        
+                        modal = NoteModal()
+                        modal.stored_attachments = self.attachments
+                        await att_interaction.response.send_modal(modal)
                 
-                attachments = []
-                if modal_interaction.message and modal_interaction.message.attachments:
-                    for att in modal_interaction.message.attachments:
-                        attachments.append({
-                            "filename": att.filename,
-                            "url": att.url,
-                            "size": att.size
-                        })
+                view = AttachmentView(self.user_id)
                 
-                note_item = {
-                    "title": self.title_input.value,
-                    "content": self.content_input.value,
-                    "created_at": datetime.now().isoformat(),
-                    "attachments": attachments
-                }
-                notes.append(note_item)
-                save_user_data(user_id, notes, notes=True)
+                # Try to get attachments from recent message if available
+                try:
+                    async for message in method_interaction.channel.history(limit=100):
+                        if message.author.id == method_interaction.user.id and message.attachments:
+                            view.attachments = [
+                                {
+                                    "filename": att.filename,
+                                    "url": att.url,
+                                    "size": att.size
+                                }
+                                for att in message.attachments
+                            ]
+                            break
+                except:
+                    pass
+                
+                attachment_text = ""
+                if view.attachments:
+                    attachment_text = "\n\n**📎 Found attachments:**\n" + "\n".join([f"• {att['filename']}" for att in view.attachments])
                 
                 embed = discord.Embed(
-                    title="📝 Note Created!",
-                    description=f"**{self.title_input.value}**\n\n{self.content_input.value[:200]}...",
+                    title="📋 GUI Form Method",
+                    description=f"Fill in the form to create your note.{attachment_text}",
                     color=discord.Color.gold()
                 )
-                if attachments:
-                    attachment_info = "\n".join([f"📎 {att['filename']}" for att in attachments])
-                    embed.add_field(name="Attachments", value=attachment_info, inline=False)
+                await method_interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+            
+            async def _show_command_method(self, method_interaction: discord.Interaction):
+                """Show the command method with temporary code"""
+                # Generate temporary code for this user
+                temp_code = create_temp_note_code(method_interaction.user.id, duration_minutes=5)
                 
-                await modal_interaction.response.send_message(embed=embed, ephemeral=True)
-
-        await interaction.response.send_modal(NoteModal())
+                embed = discord.Embed(
+                    title="💬 Temporary Command Method",
+                    description=f"Your temporary command is ready for 5 minutes:\n\n```\n/notecreate tempcode:{temp_code} title:\"My Title\" content:\"My Content\"\n```\n\n**Steps:**\n1. Upload your files to this channel (optional)\n2. Copy the command above and use it\n3. Replace `My Title` and `My Content` with your own\n4. Done! ✅",
+                    color=discord.Color.gold()
+                )
+                embed.set_footer(text="⏱️ Code expires in 5 minutes | After that, generate a new one")
+                await method_interaction.response.send_message(embed=embed, ephemeral=True)
+        
+        method_view = CreateMethodView(interaction.user.id, self)
+        embed = discord.Embed(
+            title="📝 Choose Creation Method",
+            description="Select how you want to create your note:",
+            color=discord.Color.gold()
+        )
+        await interaction.response.send_message(embed=embed, view=method_view, ephemeral=True)
 
     @discord.ui.button(label="📋 List Notes", style=discord.ButtonStyle.blurple, emoji="📚")
     async def list_notes(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -462,6 +595,20 @@ class WorkCog(commands.Cog):
     
     def __init__(self, bot):
         self.bot = bot
+        self.cleanup_expired_codes.start()
+    
+    @tasks.loop(minutes=1)
+    async def cleanup_expired_codes(self):
+        """Periodically clean up expired temporary codes"""
+        cleanup_expired_codes()
+    
+    @cleanup_expired_codes.before_loop
+    async def before_cleanup(self):
+        await self.bot.wait_until_ready()
+    
+    def cog_unload(self):
+        """Stop the cleanup task when cog is unloaded"""
+        self.cleanup_expired_codes.cancel()
 
     @app_commands.command(name="todo", description="Manage your todo list")
     @app_commands.describe(
@@ -529,6 +676,74 @@ class WorkCog(commands.Cog):
         
         view = NoteActionView(interaction.user.id, interaction)
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+    @app_commands.command(name="notecreate", description="Create a note with file attachments")
+    @app_commands.describe(
+        tempcode="Your temporary code (from /note Create Note > Command Method)",
+        title="Title for your note",
+        content="Content for your note"
+    )
+    async def notecreate(
+        self,
+        interaction: discord.Interaction,
+        tempcode: str,
+        title: str,
+        content: str
+    ):
+        """Create a note with attachments using command method with temporary code"""
+        user_id = interaction.user.id
+        
+        # Verify the temporary code
+        if not is_temp_code_valid(user_id, tempcode):
+            embed = discord.Embed(
+                title="❌ Invalid or Expired Code",
+                description="Your temporary code is invalid or has expired.\n\nGenerate a new one with `/note` → Create Note → Command Method",
+                color=discord.Color.red()
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+        
+        # Code is valid, create the note
+        notes = load_user_data(user_id, notes=True)
+        
+
+        # Get attachments from the user's message if any
+        attachments = []
+        try:
+            # Look for recent attachments from the user in this channel
+            async for message in interaction.channel.history(limit=100):
+                if message.author.id == user_id and message.attachments:
+                    attachments = [
+                        {
+                            "filename": att.filename,
+                            "url": att.url,
+                            "size": att.size
+                        }
+                        for att in message.attachments
+                    ]
+                    break
+        except:
+            pass
+        
+        note_item = {
+            "title": title,
+            "content": content,
+            "created_at": datetime.now().isoformat(),
+            "attachments": attachments
+        }
+        notes.append(note_item)
+        save_user_data(user_id, notes, notes=True)
+        
+        embed = discord.Embed(
+            title="📝 Note Created!",
+            description=f"**{title}**\n\n{content[:200]}...",
+            color=discord.Color.gold()
+        )
+        if attachments:
+            attachment_info = "\n".join([f"📎 {att['filename']}" for att in attachments])
+            embed.add_field(name="Attachments", value=attachment_info, inline=False)
+        
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(name="reminder", description="Set a reminder")
     @app_commands.describe(
