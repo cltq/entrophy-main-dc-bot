@@ -172,6 +172,11 @@ class NotesView(discord.ui.View):
                 )
                 embed.set_footer(text="Created at")
                 
+                # Display attachments if available
+                if note.get('attachments'):
+                    attachment_info = "\n".join([f"📎 {att['filename']}" for att in note['attachments']])
+                    embed.add_field(name="Attachments", value=attachment_info, inline=False)
+                
                 await select_interaction.response.send_message(embed=embed, ephemeral=True)
 
         view = ViewSelect(self)
@@ -222,6 +227,158 @@ class NotesView(discord.ui.View):
 
         view = DeleteSelect(self)
         await interaction.response.send_message("Select a note to delete:", view=view, ephemeral=True)
+
+
+class NoteActionView(discord.ui.View):
+    """View for selecting note action (create, list, delete)"""
+    def __init__(self, user_id: int, context):
+        super().__init__(timeout=300)
+        self.user_id = user_id
+        self.context = context
+
+    @discord.ui.button(label="📝 Create Note", style=discord.ButtonStyle.green, emoji="✏️")
+    async def create_note(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("❌ You can't interact with this!", ephemeral=True)
+            return
+        
+        # Create a modal for note creation
+        class NoteModal(discord.ui.Modal, title="Create a New Note"):
+            title_input = discord.ui.TextInput(
+                label="Note Title",
+                placeholder="Enter note title...",
+                max_length=256,
+                required=True
+            )
+            content_input = discord.ui.TextInput(
+                label="Note Content",
+                placeholder="Enter note content...",
+                style=discord.TextStyle.long,
+                max_length=4000,
+                required=True
+            )
+
+            async def on_submit(self, modal_interaction: discord.Interaction):
+                user_id = modal_interaction.user.id
+                notes = load_user_data(user_id, notes=True)
+                
+                attachments = []
+                if modal_interaction.message and modal_interaction.message.attachments:
+                    for att in modal_interaction.message.attachments:
+                        attachments.append({
+                            "filename": att.filename,
+                            "url": att.url,
+                            "size": att.size
+                        })
+                
+                note_item = {
+                    "title": self.title_input.value,
+                    "content": self.content_input.value,
+                    "created_at": datetime.now().isoformat(),
+                    "attachments": attachments
+                }
+                notes.append(note_item)
+                save_user_data(user_id, notes, notes=True)
+                
+                embed = discord.Embed(
+                    title="📝 Note Created!",
+                    description=f"**{self.title_input.value}**\n\n{self.content_input.value[:200]}...",
+                    color=discord.Color.gold()
+                )
+                if attachments:
+                    attachment_info = "\n".join([f"📎 {att['filename']}" for att in attachments])
+                    embed.add_field(name="Attachments", value=attachment_info, inline=False)
+                
+                await modal_interaction.response.send_message(embed=embed, ephemeral=True)
+
+        await interaction.response.send_modal(NoteModal())
+
+    @discord.ui.button(label="📋 List Notes", style=discord.ButtonStyle.blurple, emoji="📚")
+    async def list_notes(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("❌ You can't interact with this!", ephemeral=True)
+            return
+        
+        await interaction.response.defer(ephemeral=True)
+        
+        notes = load_user_data(interaction.user.id, notes=True)
+        
+        if not notes:
+            embed = discord.Embed(
+                title="📝 Your Notes",
+                description="✨ No notes yet! Click the Create Note button to make one.",
+                color=discord.Color.gold()
+            )
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+        
+        embed = discord.Embed(
+            title="📝 Your Notes",
+            color=discord.Color.gold()
+        )
+        
+        for idx, note in enumerate(notes, 1):
+            attachment_count = len(note.get('attachments', []))
+            attachment_str = f" 📎 ({attachment_count})" if attachment_count > 0 else ""
+            embed.add_field(
+                name=f"{idx}. {note['title']}{attachment_str}",
+                value=note['content'][:100] + "..." if len(note['content']) > 100 else note['content'],
+                inline=False
+            )
+        
+        embed.set_footer(text=f"Total: {len(notes)} notes")
+        view = NotesView(self.user_id, notes, interaction)
+        await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+
+    @discord.ui.button(label="🗑️ Delete Note", style=discord.ButtonStyle.red, emoji="❌")
+    async def delete_note(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("❌ You can't interact with this!", ephemeral=True)
+            return
+        
+        await interaction.response.defer(ephemeral=True)
+        
+        notes = load_user_data(interaction.user.id, notes=True)
+        
+        if not notes:
+            await interaction.followup.send("❌ No notes to delete!", ephemeral=True)
+            return
+        
+        options = [
+            discord.SelectOption(
+                label=note['title'][:100],
+                value=str(idx),
+                emoji="🗑️"
+            )
+            for idx, note in enumerate(notes)
+        ]
+
+        class DeleteSelect(discord.ui.View):
+            def __init__(self, parent):
+                super().__init__(timeout=60)
+                self.parent = parent
+
+            @discord.ui.select(
+                placeholder="Select a note to delete...",
+                options=options[:25]
+            )
+            async def select_delete(self, select_interaction: discord.Interaction, select: discord.ui.Select):
+                if select_interaction.user.id != self.parent.user_id:
+                    await select_interaction.response.send_message("❌ Not your notes!", ephemeral=True)
+                    return
+
+                idx = int(select.values[0])
+                deleted_title = notes[idx]['title']
+                del notes[idx]
+                save_user_data(self.parent.user_id, notes, notes=True)
+                
+                await select_interaction.response.send_message(
+                    f"🗑️ Deleted note **{deleted_title}**!",
+                    ephemeral=True
+                )
+
+        view = DeleteSelect(self)
+        await interaction.followup.send("Select a note to delete:", view=view, ephemeral=True)
 
 
 def ensure_data_dir():
@@ -361,79 +518,17 @@ class WorkCog(commands.Cog):
             )
 
     @app_commands.command(name="note", description="Create and manage notes")
-    @app_commands.describe(
-        action="Action to perform: create or list",
-        title="Title for the note",
-        content="Content for the note"
-    )
-    async def note(
-        self,
-        interaction: discord.Interaction,
-        action: str = "list",
-        title: Optional[str] = None,
-        content: Optional[str] = None
-    ):
-        """Create and manage notes with /note create|list"""
-        await interaction.response.defer(ephemeral=True)
+    async def note(self, interaction: discord.Interaction):
+        """Manage notes with interactive menu"""
+        embed = discord.Embed(
+            title="📝 Note Manager",
+            description="Choose what you'd like to do with your notes:",
+            color=discord.Color.gold()
+        )
+        embed.set_footer(text="Click a button to get started")
         
-        user_id = interaction.user.id
-        notes = load_user_data(user_id, notes=True)
-        
-        if action.lower() == "create":
-            if not title or not content:
-                await interaction.followup.send(
-                    "❌ Please provide both title and content!",
-                    ephemeral=True
-                )
-                return
-            
-            note_item = {
-                "title": title,
-                "content": content,
-                "created_at": datetime.now().isoformat()
-            }
-            notes.append(note_item)
-            save_user_data(user_id, notes, notes=True)
-            
-            embed = discord.Embed(
-                title="📝 Note Created!",
-                description=f"**{title}**\n\n{content[:200]}...",
-                color=discord.Color.gold()
-            )
-            view = NotesView(user_id, notes, interaction)
-            await interaction.followup.send(embed=embed, view=view, ephemeral=True)
-        
-        elif action.lower() == "list":
-            if not notes:
-                embed = discord.Embed(
-                    title="📝 Your Notes",
-                    description="✨ No notes yet! Create one with `/note create`",
-                    color=discord.Color.gold()
-                )
-                await interaction.followup.send(embed=embed, ephemeral=True)
-                return
-            
-            embed = discord.Embed(
-                title="📝 Your Notes",
-                color=discord.Color.gold()
-            )
-            
-            for idx, note in enumerate(notes, 1):
-                embed.add_field(
-                    name=f"{idx}. {note['title']}",
-                    value=note['content'][:100] + "..." if len(note['content']) > 100 else note['content'],
-                    inline=False
-                )
-            
-            embed.set_footer(text=f"Total: {len(notes)} notes")
-            view = NotesView(user_id, notes, interaction)
-            await interaction.followup.send(embed=embed, view=view, ephemeral=True)
-        
-        else:
-            await interaction.followup.send(
-                "❌ Invalid action! Use: `create` or `list`",
-                ephemeral=True
-            )
+        view = NoteActionView(interaction.user.id, interaction)
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
     @app_commands.command(name="reminder", description="Set a reminder")
     @app_commands.describe(
@@ -480,38 +575,18 @@ class WorkCog(commands.Cog):
         )
         await interaction.followup.send(embed=embed, ephemeral=True)
 
-    @app_commands.command(name="notes", description="Quick alias for note list")
+    @app_commands.command(name="notes", description="Quick alias for note manager")
     async def notes(self, interaction: discord.Interaction):
-        """Quick view of all notes - alias for /note list"""
-        await interaction.response.defer(ephemeral=True)
-        
-        user_id = interaction.user.id
-        notes_list = load_user_data(user_id, notes=True)
-        
-        if not notes_list:
-            embed = discord.Embed(
-                title="📝 Your Notes",
-                description="✨ No notes yet! Create one with `/note create`",
-                color=discord.Color.gold()
-            )
-            await interaction.followup.send(embed=embed, ephemeral=True)
-            return
-        
+        """Quick access to notes - same as /note"""
         embed = discord.Embed(
-            title="📝 Your Notes",
+            title="📝 Note Manager",
+            description="Choose what you'd like to do with your notes:",
             color=discord.Color.gold()
         )
+        embed.set_footer(text="Click a button to get started")
         
-        for idx, note in enumerate(notes_list, 1):
-            embed.add_field(
-                name=f"{idx}. {note['title']}",
-                value=note['content'][:100] + "..." if len(note['content']) > 100 else note['content'],
-                inline=False
-            )
-        
-        embed.set_footer(text=f"Total: {len(notes_list)} notes")
-        view = NotesView(user_id, notes_list, interaction)
-        await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+        view = NoteActionView(interaction.user.id, interaction)
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
     @app_commands.command(name="todos", description="Quick alias for todo view")
     async def todos(self, interaction: discord.Interaction):

@@ -65,7 +65,7 @@ def create_qr_with_logo(pp_number, amount):
     if os.path.exists(LOGO_PATH):
         try:
             logo = Image.open(LOGO_PATH).convert("RGBA")
-            max_size = int(qr_width * 0.22)
+            max_size = int(qr_width * 0.12)
             logo.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
             offset = ((qr_width - logo.size[0]) // 2, (qr_width - logo.size[1]) // 2)
             qr_img.paste(logo, offset, logo)
