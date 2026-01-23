@@ -681,14 +681,16 @@ class WorkCog(commands.Cog):
     @app_commands.describe(
         tempcode="Your temporary code (from /note Create Note > Command Method)",
         title="Title for your note",
-        content="Content for your note"
+        content="Content for your note",
+        attachment="Attach a file (required)"
     )
     async def notecreate(
         self,
         interaction: discord.Interaction,
         tempcode: str,
         title: str,
-        content: str
+        content: str,
+        attachment: discord.Attachment
     ):
         """Create a note with attachments using command method with temporary code"""
         user_id = interaction.user.id
@@ -706,24 +708,14 @@ class WorkCog(commands.Cog):
         # Code is valid, create the note
         notes = load_user_data(user_id, notes=True)
         
-
-        # Get attachments from the user's message if any
-        attachments = []
-        try:
-            # Look for recent attachments from the user in this channel
-            async for message in interaction.channel.history(limit=100):
-                if message.author.id == user_id and message.attachments:
-                    attachments = [
-                        {
-                            "filename": att.filename,
-                            "url": att.url,
-                            "size": att.size
-                        }
-                        for att in message.attachments
-                    ]
-                    break
-        except:
-            pass
+        # Convert attachment to the same format
+        attachments = [
+            {
+                "filename": attachment.filename,
+                "url": attachment.url,
+                "size": attachment.size
+            }
+        ]
         
         note_item = {
             "title": title,
@@ -734,6 +726,18 @@ class WorkCog(commands.Cog):
         notes.append(note_item)
         save_user_data(user_id, notes, notes=True)
         
+        # Expire the code after use
+        if user_id in TEMP_NOTE_CODES:
+            del TEMP_NOTE_CODES[user_id]
+        
+        class CodeExpireView(discord.ui.View):
+            def __init__(self):
+                super().__init__(timeout=300)
+            
+            @discord.ui.button(label="🔓 Code Already Expired", style=discord.ButtonStyle.red, disabled=True)
+            async def code_expired_btn(self, button_interaction: discord.Interaction, button: discord.ui.Button):
+                pass
+        
         embed = discord.Embed(
             title="📝 Note Created!",
             description=f"**{title}**\n\n{content[:200]}...",
@@ -743,7 +747,9 @@ class WorkCog(commands.Cog):
             attachment_info = "\n".join([f"📎 {att['filename']}" for att in attachments])
             embed.add_field(name="Attachments", value=attachment_info, inline=False)
         
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        embed.set_footer(text="✅ Code has been automatically expired after use")
+        
+        await interaction.response.send_message(embed=embed, view=CodeExpireView(), ephemeral=True)
 
     @app_commands.command(name="reminder", description="Set a reminder")
     @app_commands.describe(
