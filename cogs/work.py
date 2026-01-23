@@ -252,11 +252,14 @@ def create_temp_note_code(user_id: int, duration_minutes: int = 5) -> str:
 
 def is_temp_code_valid(user_id: int, code: str) -> bool:
     """Check if a temporary code is valid and not expired"""
+    # Strip whitespace and convert to lowercase for comparison
+    code = code.strip().lower()
+    
     if user_id not in TEMP_NOTE_CODES:
         return False
     
     stored = TEMP_NOTE_CODES[user_id]
-    if stored["code"] != code:
+    if stored["code"].lower() != code:
         return False
     
     if datetime.now() > stored["expires_at"]:
@@ -410,13 +413,27 @@ class NoteActionView(discord.ui.View):
                 # Generate temporary code for this user
                 temp_code = create_temp_note_code(method_interaction.user.id, duration_minutes=5)
                 
+                class CodeCopyView(discord.ui.View):
+                    def __init__(self, code):
+                        super().__init__(timeout=300)
+                        self.code = code
+                    
+                    @discord.ui.button(label="📋 Copy Code", style=discord.ButtonStyle.primary, emoji="📌")
+                    async def copy_code(self, button_interaction: discord.Interaction, button: discord.ui.Button):
+                        # Copy code to clipboard via message
+                        await button_interaction.response.send_message(
+                            f"Your code to copy:\n```\n{self.code}\n```",
+                            ephemeral=True
+                        )
+                
                 embed = discord.Embed(
                     title="💬 Temporary Command Method",
-                    description=f"Your temporary command is ready for 5 minutes:\n\n```\n/notecreate tempcode:{temp_code} title:\"My Title\" content:\"My Content\"\n```\n\n**Steps:**\n1. Upload your files to this channel (optional)\n2. Copy the command above and use it\n3. Replace `My Title` and `My Content` with your own\n4. Done! ✅",
+                    description=f"Your temporary code is ready for 5 minutes:\n\n**Code:** `{temp_code}`\n\n**Command format:**\n```\n/notecreate\ntempcode: {temp_code}\ntitle: Your Title\ncontent: Your Content\nattachment: [your_file]\n```\n\n**Steps:**\n1. Click the button below to copy your code\n2. Use the `/notecreate` command\n3. Paste your code in the `tempcode` field\n4. Fill in title, content, and attach a file\n5. Done! ✅",
                     color=discord.Color.gold()
                 )
-                embed.set_footer(text="⏱️ Code expires in 5 minutes | After that, generate a new one")
-                await method_interaction.response.send_message(embed=embed, ephemeral=True)
+                embed.set_footer(text="⏱️ Code expires in 5 minutes | Or after first use")
+                
+                await method_interaction.response.send_message(embed=embed, view=CodeCopyView(temp_code), ephemeral=True)
         
         method_view = CreateMethodView(interaction.user.id, self)
         embed = discord.Embed(
@@ -695,13 +712,22 @@ class WorkCog(commands.Cog):
         """Create a note with attachments using command method with temporary code"""
         user_id = interaction.user.id
         
+        # Debug: Check if code exists
+        has_code = user_id in TEMP_NOTE_CODES
+        
         # Verify the temporary code
         if not is_temp_code_valid(user_id, tempcode):
+            if not has_code:
+                error_msg = "No code found for your account. Generate one with `/note` → Create Note → Command Method"
+            else:
+                error_msg = "Your temporary code is invalid or has expired.\n\nGenerate a new one with `/note` → Create Note → Command Method"
+            
             embed = discord.Embed(
                 title="❌ Invalid or Expired Code",
-                description="Your temporary code is invalid or has expired.\n\nGenerate a new one with `/note` → Create Note → Command Method",
+                description=error_msg,
                 color=discord.Color.red()
             )
+            embed.add_field(name="Debug Info", value=f"Code provided: `{tempcode.strip()}`\nCode exists: `{has_code}`", inline=False)
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
         

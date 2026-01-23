@@ -4,6 +4,7 @@ import discord
 from discord.ext import commands
 from utils.discord_logger import DiscordHandler
 from utils.log_buffer import BufferHandler
+from utils.advanced_logger import setup_advanced_logger, LogLevel, log_command_execution, log_error, log_event
 from dashboard.server import start_dashboard
 from dotenv import load_dotenv
 from typing import Literal, Optional
@@ -47,12 +48,8 @@ bot = commands.Bot(command_prefix=botprefix, intents=intents)
 bot.launch_time = datetime.datetime.now(datetime.timezone.utc)
 
 # ---------- LOGGING ----------
-logger = logging.getLogger("entrophy")
-logger.setLevel(logging.INFO)
-fmt = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")
-stream = logging.StreamHandler()
-stream.setFormatter(fmt)
-logger.addHandler(stream)
+logger = setup_advanced_logger("entrophy", level=LogLevel.VERBOSE)
+logger.setLevel(LogLevel.VERBOSE)
 # Add in-memory buffer handler for dashboard
 try:
     buf = BufferHandler()
@@ -63,9 +60,10 @@ except Exception:
 # Add rotating file handler to persist logs for 'all logs' page
 try:
     import logging.handlers
+    from utils.advanced_logger import AdvancedFormatter
     os.makedirs(os.path.join(os.getcwd(), 'logs'), exist_ok=True)
     fileh = logging.handlers.RotatingFileHandler(os.path.join('logs', 'entrophy.log'), maxBytes=2_000_000, backupCount=5, encoding='utf-8')
-    fileh.setFormatter(fmt)
+    fileh.setFormatter(AdvancedFormatter())
     logger.addHandler(fileh)
 except Exception:
     logger.exception('Failed to attach file handler')
@@ -78,8 +76,9 @@ async def _attach_discord_handler_if_configured():
     if not LOG_CHANNEL_ID:
         return
     try:
+        from utils.advanced_logger import AdvancedFormatter
         discord_handler = DiscordHandler(bot, int(LOG_CHANNEL_ID))
-        discord_handler.setFormatter(fmt)
+        discord_handler.setFormatter(AdvancedFormatter())
         logger.addHandler(discord_handler)
         try:
             await discord_handler.start()
@@ -169,73 +168,44 @@ except Exception:
 # ---------- EVENTS ----------
 @bot.event
 async def on_ready():
-    logger.info(f"✅ Logged in as {bot.user} (ID: {bot.user.id})")
+    log_event(logger, "Bot Ready", f"Logged in as {bot.user} (ID: {bot.user.id})")
     await sync_slash()
-    logger.info("🔁 Slash commands synced.")
 
 # ---------- COMMAND LOGGING ----------
 @bot.event
 async def on_command(ctx):
     """Log whenever a prefix command is used"""
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    user = f"{ctx.author} (ID: {ctx.author.id})"
-    guild = f"{ctx.guild.name} (ID: {ctx.guild.id})" if ctx.guild else "DM"
-    command = ctx.command.name
-    args = ' '.join(ctx.args[2:]) if len(ctx.args) > 2 else "No args"
-
-    user_str = format_user(ctx.author)
-    channel_str, guild_str = format_channel_and_guild_from_ctx(ctx)
-    msg = f"[{timestamp}] 📝 Command: {botprefix}{command} — User: {user_str} — Guild: {guild_str} — Channel: {channel_str} — Args: {args}"
-    extra = {
-        'user': ctx.author,
-        'command': getattr(ctx.command, 'qualified_name', getattr(ctx.command, 'name', command)),
-        'channel': ctx.channel,
-        'guild': ctx.guild,
-    }
-    logger.info(msg, extra=extra)
+    args = ' '.join(ctx.args[2:]) if len(ctx.args) > 2 else ""
+    log_command_execution(logger, "prefix", ctx.command.name, ctx.author, ctx.guild, ctx.channel, args)
 
 @bot.event
 async def on_app_command_completion(interaction: discord.Interaction, command):
     """Log whenever a slash command is used"""
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    user = f"{interaction.user} (ID: {interaction.user.id})"
-    guild = f"{interaction.guild.name} (ID: {interaction.guild.id})" if interaction.guild else "DM"
-    cmd_name = command.name
-
-    user_str = format_user(interaction.user)
-    channel_str, guild_str = format_channel_and_guild_from_interaction(interaction)
-    msg = f"[{timestamp}] ⚡ Slash Command: /{cmd_name} — User: {user_str} — Guild: {guild_str} — Channel: {channel_str}"
-    extra = {
-        'user': interaction.user,
-        'command': cmd_name,
-        'channel': interaction.channel,
-        'guild': interaction.guild,
-        'interaction': interaction,
-    }
-    logger.info(msg, extra=extra)
+    log_command_execution(logger, "slash", command.name, interaction.user, interaction.guild, interaction.channel)
 
 # ---------- ERROR HANDLER ----------
 @bot.event
 async def on_command_error(ctx, error):
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
     if isinstance(error, commands.CommandNotFound):
         return
     elif isinstance(error, commands.MissingPermissions):
-        logger.warning(f"[{timestamp}] ⚠️ {ctx.author} tried to use {ctx.command.name} without permissions", extra={'user': ctx.author, 'command': getattr(ctx.command, 'name', None), 'channel': ctx.channel, 'guild': ctx.guild})
+        log_error(logger, "PermissionError", f"{ctx.author} tried to use {ctx.command.name} without permissions", 
+                 user=ctx.author, command=ctx.command.name, channel=ctx.channel, guild=ctx.guild)
         await ctx.send("⚠️ You lack permissions to use this command.")
     elif isinstance(error, commands.NotOwner):
-        logger.warning(f"[{timestamp}] ❌ {ctx.author} tried to use owner-only command: {ctx.command.name}", extra={'user': ctx.author, 'command': getattr(ctx.command, 'name', None), 'channel': ctx.channel, 'guild': ctx.guild})
+        log_error(logger, "OwnerOnly", f"{ctx.author} tried to use owner-only command: {ctx.command.name}", 
+                 user=ctx.author, command=ctx.command.name, channel=ctx.channel, guild=ctx.guild)
         await ctx.send("❌ This command is restricted to the bot owner.")
     else:
-        logger.exception(f"[{timestamp}] ❌ Error in {ctx.command.name}: {error}", extra={'user': ctx.author, 'command': getattr(ctx.command, 'name', None), 'channel': ctx.channel, 'guild': ctx.guild})
+        log_error(logger, "CommandError", f"Error in {ctx.command.name}: {error}", 
+                 user=ctx.author, command=ctx.command.name, channel=ctx.channel, guild=ctx.guild, exc_info=True)
         await ctx.send(f"❌ Error: `{error}`")
         raise error
 
 # ---------- UTIL FUNCTIONS ----------
 async def sync_slash():
     synced = await bot.tree.sync()
-    logger.info(f"🔁 Synced {len(synced)} slash commands")
+    log_event(logger, "SlashCommandsSync", f"Synced {len(synced)} slash commands")
 
     # Debug: list registered app commands and where they're registered
     try:
@@ -249,9 +219,9 @@ async def sync_slash():
                         ids.append(getattr(g, 'id', g))
                     except Exception:
                         ids.append(str(g))
-                logger.info(f"  - {cmd.name}: guild-only -> {ids}")
+                logger.verbose(f"Slash command {cmd.name}: guild-only -> {ids}")
             else:
-                logger.info(f"  - {cmd.name}: global")
+                logger.verbose(f"Slash command {cmd.name}: global")
     except Exception:
         pass
 
