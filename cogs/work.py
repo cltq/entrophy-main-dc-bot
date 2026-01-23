@@ -177,10 +177,18 @@ class NotesView(discord.ui.View):
                 )
                 embed.set_footer(text="Created at")
                 
-                # Display attachments if available
+                # Display attachments if available with clickable links
                 if note.get('attachments'):
-                    attachment_info = "\n".join([f"📎 {att['filename']}" for att in note['attachments']])
-                    embed.add_field(name="Attachments", value=attachment_info, inline=False)
+                    attachment_links = []
+                    for att in note['attachments']:
+                        # Create clickable links with the filename
+                        file_size = att.get('size', 0)
+                        size_str = f"{file_size / 1024 / 1024:.2f}MB" if file_size > 1024 * 1024 else f"{file_size / 1024:.2f}KB"
+                        link = f"[📎 {att['filename']}]({att['url']}) ({size_str})"
+                        attachment_links.append(link)
+                    
+                    attachment_info = "\n".join(attachment_links)
+                    embed.add_field(name="🔗 Attachments", value=attachment_info, inline=False)
                 
                 await select_interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -470,13 +478,26 @@ class NoteActionView(discord.ui.View):
         for idx, note in enumerate(notes, 1):
             attachment_count = len(note.get('attachments', []))
             attachment_str = f" 📎 ({attachment_count})" if attachment_count > 0 else ""
+            
+            # Create note preview with clickable attachments
+            content_preview = note['content'][:100] + "..." if len(note['content']) > 100 else note['content']
+            
+            # Add attachment links to preview if available
+            if note.get('attachments') and attachment_count > 0:
+                content_preview += f"\n\n**Attachments:** "
+                attachment_links = []
+                for att in note.get('attachments', []):
+                    link = f"[{att['filename']}]({att['url']})"
+                    attachment_links.append(link)
+                content_preview += ", ".join(attachment_links)
+            
             embed.add_field(
                 name=f"{idx}. {note['title']}{attachment_str}",
-                value=note['content'][:100] + "..." if len(note['content']) > 100 else note['content'],
+                value=content_preview,
                 inline=False
             )
         
-        embed.set_footer(text=f"Total: {len(notes)} notes")
+        embed.set_footer(text=f"Total: {len(notes)} notes | Click 'View Note' for full details")
         view = NotesView(self.user_id, notes, interaction)
         await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
@@ -770,8 +791,15 @@ class WorkCog(commands.Cog):
             color=discord.Color.gold()
         )
         if attachments:
-            attachment_info = "\n".join([f"📎 {att['filename']}" for att in attachments])
-            embed.add_field(name="Attachments", value=attachment_info, inline=False)
+            attachment_links = []
+            for att in attachments:
+                file_size = att.get('size', 0)
+                size_str = f"{file_size / 1024 / 1024:.2f}MB" if file_size > 1024 * 1024 else f"{file_size / 1024:.2f}KB"
+                link = f"[📎 {att['filename']}]({att['url']}) ({size_str})"
+                attachment_links.append(link)
+            
+            attachment_info = "\n".join(attachment_links)
+            embed.add_field(name="🔗 Attachments", value=attachment_info, inline=False)
         
         embed.set_footer(text="✅ Code has been automatically expired after use")
         
