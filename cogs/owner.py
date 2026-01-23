@@ -264,7 +264,9 @@ class Owner(commands.Cog):
             cog_name = params[0]
             try:
                 if action == "reload":
-                    await self.bot.reload_extension(f"cogs.{cog_name}")
+                    # Unload first, then load to ensure a fresh reload
+                    await self.bot.unload_extension(f"cogs.{cog_name}")
+                    await self.bot.load_extension(f"cogs.{cog_name}")
                     await ctx.send(f"✅ Reloaded cog: `{cog_name}`")
                 elif action == "load":
                     await self.bot.load_extension(f"cogs.{cog_name}")
@@ -329,7 +331,7 @@ class Owner(commands.Cog):
     @app_commands.command(name="botcontrol", description="🔧 Bot control panel (Owner only)")
     @app_commands.check(bot_control_check)
     @app_commands.describe(
-        action="Action to perform: status, state, pause, resume, name, profile, cogs, reload, load, unload, shutdown"
+        action="Action to perform: status, state, pause, resume, profile, cogs, reload, load, unload, sync, shutdown"
     )
     async def botcontrol(
         self,
@@ -388,6 +390,25 @@ class Owner(commands.Cog):
             await interaction.followup.send("▶️ Status auto-cycling resumed!", ephemeral=True)
             return
 
+        # Sync slash commands
+        if action == "sync":
+            try:
+                synced = await self.bot.tree.sync()
+                embed = discord.Embed(
+                    title="✅ Commands Synced",
+                    description=f"Successfully synced {len(synced)} commands globally.",
+                    color=discord.Color.green()
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            except Exception as e:
+                embed = discord.Embed(
+                    title="❌ Sync Failed",
+                    description=f"Failed to sync commands: {e}",
+                    color=discord.Color.red()
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+
         if action == "shutdown":
             embed = discord.Embed(
                 title="🛑 Bot Shutdown",
@@ -398,12 +419,7 @@ class Owner(commands.Cog):
             await self.bot.close()
             return
 
-        # Actions requiring additional parameters via modal
-        if action == "status":
-            modal = StatusModal(self)
-            await interaction.response.send_modal(modal)
-            return
-
+        # Actions requiring additional parameters via modal or view
         if action == "state":
             view = StateView(self)
             embed = discord.Embed(
@@ -414,11 +430,6 @@ class Owner(commands.Cog):
             await interaction.response.edit_message(content="", embed=embed, view=view)
             return
 
-        if action == "name":
-            modal = NameModal(self)
-            await interaction.response.send_modal(modal)
-            return
-
         if action == "reload":
             view = CogSelectView(self, "reload")
             embed = discord.Embed(
@@ -427,11 +438,6 @@ class Owner(commands.Cog):
                 color=discord.Color.blue()
             )
             await interaction.response.edit_message(content="", embed=embed, view=view)
-            return
-
-        if action == "load":
-            modal = CogModal(self, "load")
-            await interaction.response.send_modal(modal)
             return
 
         if action == "unload":
@@ -445,99 +451,9 @@ class Owner(commands.Cog):
             return
 
         await interaction.followup.send(
-            "❌ Unknown action! Available: status, state, pause, resume, name, profile, cogs, reload, load, unload, shutdown",
+            "❌ Unknown action! Available: state, pause, resume, profile, cogs, reload, unload, sync, shutdown",
             ephemeral=True
         )
-
-
-class StatusModal(discord.ui.Modal):
-    """Modal for setting custom status"""
-    def __init__(self, cog):
-        super().__init__(title="Set Bot Status")
-        self.cog = cog
-        self.status_input = discord.ui.TextInput(
-            label="Status Text",
-            placeholder="Enter the status text...",
-            max_length=128
-        )
-        self.add_item(self.status_input)
-
-    async def on_submit(self, interaction: discord.Interaction):
-        status_text = self.status_input.value
-        self.cog.cycle_paused = True
-        try:
-            await self.cog.bot.change_presence(activity=discord.Game(status_text))
-            embed = discord.Embed(
-                title="✅ Status Updated",
-                description=f"Status changed to: `{status_text}`",
-                color=discord.Color.green()
-            )
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-        except Exception as e:
-            await interaction.response.send_message(f"❌ Failed to change status: {e}", ephemeral=True)
-
-
-class NameModal(discord.ui.Modal):
-    """Modal for setting bot name"""
-    def __init__(self, cog):
-        super().__init__(title="Set Bot Username")
-        self.cog = cog
-        self.name_input = discord.ui.TextInput(
-            label="New Username",
-            placeholder="Enter the new bot username...",
-            max_length=32
-        )
-        self.add_item(self.name_input)
-
-    async def on_submit(self, interaction: discord.Interaction):
-        new_name = self.name_input.value
-        try:
-            await self.cog.bot.user.edit(username=new_name)
-            embed = discord.Embed(
-                title="✅ Username Updated",
-                description=f"Bot username changed to: `{new_name}`",
-                color=discord.Color.green()
-            )
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-        except discord.HTTPException as e:
-            if getattr(e, 'status', None) == 429:
-                await interaction.response.send_message("❌ Rate limited! You can only change the bot's username twice per hour.", ephemeral=True)
-            else:
-                await interaction.response.send_message(f"❌ Failed to change username: {e}", ephemeral=True)
-        except Exception as e:
-            await interaction.response.send_message(f"❌ An error occurred: {e}", ephemeral=True)
-
-
-class CogModal(discord.ui.Modal):
-    """Modal for loading a cog"""
-    def __init__(self, cog, action):
-        super().__init__(title=f"{'Load' if action == 'load' else 'Reload'} Cog")
-        self.cog = cog
-        self.action = action
-        self.cog_input = discord.ui.TextInput(
-            label="Cog Name",
-            placeholder="Enter the cog name (without 'cogs.' prefix)...",
-            max_length=50
-        )
-        self.add_item(self.cog_input)
-
-    async def on_submit(self, interaction: discord.Interaction):
-        cog_name = self.cog_input.value
-        try:
-            if self.action == "load":
-                await self.cog.bot.load_extension(f"cogs.{cog_name}")
-                embed = discord.Embed(
-                    title="✅ Cog Loaded",
-                    description=f"Successfully loaded cog: `{cog_name}`",
-                    color=discord.Color.green()
-                )
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-        except commands.ExtensionNotFound:
-            await interaction.response.send_message(f"❌ Cog `{cog_name}` not found.", ephemeral=True)
-        except commands.ExtensionAlreadyLoaded:
-            await interaction.response.send_message(f"❌ Cog `{cog_name}` is already loaded.", ephemeral=True)
-        except Exception as e:
-            await interaction.response.send_message(f"❌ Failed to {self.action} `{cog_name}`: {e}", ephemeral=True)
 
 
 class StateView(discord.ui.View):
@@ -604,7 +520,9 @@ class CogSelectView(discord.ui.View):
         
         try:
             if self.action == "reload":
-                await self.cog.bot.reload_extension(f"cogs.{cog_name}")
+                # Unload first, then load to ensure a fresh reload
+                await self.cog.bot.unload_extension(f"cogs.{cog_name}")
+                await self.cog.bot.load_extension(f"cogs.{cog_name}")
                 message = f"✅ Reloaded cog: `{cog_name}`"
             elif self.action == "unload":
                 if cog_name == "Owner":
@@ -621,6 +539,8 @@ class CogSelectView(discord.ui.View):
                 color=discord.Color.green()
             )
             await interaction.response.send_message(embed=embed, ephemeral=True)
+        except commands.ExtensionNotFound:
+            await interaction.response.send_message(f"❌ Cog `{cog_name}` not found.", ephemeral=True)
         except commands.ExtensionNotLoaded:
             await interaction.response.send_message(f"❌ Cog `{cog_name}` is not loaded.", ephemeral=True)
         except Exception as e:
