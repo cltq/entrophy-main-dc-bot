@@ -649,6 +649,8 @@ class WorkCog(commands.Cog):
         self.cleanup_expired_codes.cancel()
 
     @app_commands.command(name="todo", description="Manage your todo list")
+    @discord.app_commands.allowed_installs(guilds=True, users=True)
+    @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     @app_commands.describe(
         action="Action to perform: add, view, or clear",
         text="Text for the todo (required for 'add')"
@@ -703,6 +705,8 @@ class WorkCog(commands.Cog):
             )
 
     @app_commands.command(name="note", description="Create and manage notes")
+    @discord.app_commands.allowed_installs(guilds=True, users=True)
+    @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def note(self, interaction: discord.Interaction):
         """Manage notes with interactive menu"""
         embed = discord.Embed(
@@ -716,6 +720,8 @@ class WorkCog(commands.Cog):
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
     @app_commands.command(name="notecreate", description="Create a note with file attachments")
+    @discord.app_commands.allowed_installs(guilds=True, users=True)
+    @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     @app_commands.describe(
         tempcode="Your temporary code (from /note Create Note > Command Method)",
         title="Title for your note",
@@ -864,6 +870,8 @@ class WorkCog(commands.Cog):
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
     @app_commands.command(name="todos", description="Quick alias for todo view")
+    @discord.app_commands.allowed_installs(guilds=True, users=True)
+    @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def todos(self, interaction: discord.Interaction):
         """Quick view of all todos - alias for /todo view"""
         await interaction.response.defer(ephemeral=True)
