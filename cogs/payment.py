@@ -215,6 +215,12 @@ class QRView(discord.ui.View):
             await send_payment_log(self.bot, embed)
             
             await interaction.response.send_message("✅ บันทึกสถานะเป็น **ชำระแล้ว** แล้ว", ephemeral=True)
+            # ลบข้อความ QR หลังจาก 5 วินาที
+            await asyncio.sleep(5)
+            try:
+                await interaction.message.delete()
+            except:
+                pass
         else:
             await interaction.response.send_message("❌ คุณไม่ใช่เจ้าของรายการนี้", ephemeral=True)
 
@@ -234,6 +240,12 @@ class QRView(discord.ui.View):
             await send_payment_log(self.bot, embed)
             
             await interaction.response.send_message("✅ บันทึกสถานะเป็น **ปฏิเสธ** แล้ว", ephemeral=True)
+            # ลบข้อความ QR หลังจาก 5 วินาที
+            await asyncio.sleep(5)
+            try:
+                await interaction.message.delete()
+            except:
+                pass
         else:
             await interaction.response.send_message("❌ คุณไม่ใช่เจ้าของรายการนี้", ephemeral=True)
 
@@ -253,6 +265,12 @@ class QRView(discord.ui.View):
             await send_payment_log(self.bot, embed)
             
             await interaction.response.edit_message(content="🔒 **ปิดรายการแล้ว**", embed=None, view=None)
+            # ลบข้อความ QR หลังจาก 5 วินาที
+            await asyncio.sleep(5)
+            try:
+                await interaction.message.delete()
+            except:
+                pass
         else:
             await interaction.response.send_message("❌ คุณไม่ใช่เจ้าของรายการนี้", ephemeral=True)
 
