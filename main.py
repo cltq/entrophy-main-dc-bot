@@ -35,8 +35,11 @@ load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 OWNER_ID = int(os.getenv("BOT_OWNER_ID") or 0)
-# Allow setting a bot prefix via env; default to 'q' for backwards compatibility
-botprefix = str(os.getenv("BOT_PREFIX") or "q")
+# Allow multiple bot prefixes via env variables
+primary_prefix = str(os.getenv("BOT_PREFIX") or "q")
+global_prefix = str(os.getenv("BOT_GLOBAL_PREFIX") or "q")
+# Create list of prefixes, avoid duplicates
+botprefix = list(dict.fromkeys([primary_prefix, global_prefix])) if primary_prefix != global_prefix else [primary_prefix]
 
 intents = discord.Intents.default()
 intents.message_content = True  # Required for reading message content (e.g. !commands)
