@@ -84,10 +84,21 @@ async def close_session(interaction):
         await interaction.delete_original_response()
     except: pass
 
+async def send_qr_log(bot, embed, file=None):
+    """ส่ง embed ไปยัง logging channel"""
+    try:
+        guild = bot.get_guild(int(os.getenv("GUILD_ID")))
+        if guild:
+            channel = guild.get_channel(1461331433560739862)
+            if channel:
+                await channel.send(embed=embed, file=file)
+    except Exception as e:
+        print(f"Error sending QR log: {e}")
+
 def build_embed(user, pp, amount):
     masked = f"{pp[:3]}-xxx-{pp[-4:]}" if len(pp) >= 10 else pp
     now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-    embed = discord.Embed(title="💳 PromptPay QR Payment", color=0x000000)
+    embed = discord.Embed(title="💳 PromptPay QR Payment", color=0xCCCCFF)
     embed.description = f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n**ผู้รับเงิน:** `{masked}`"
     embed.set_author(name=f"Requested by {user.display_name}", icon_url=user.display_avatar.url)
     amt_text = f"**฿ {amount:,.2f}**" if amount > 0 else "*- ระบุยอดเงินเอง -*"
@@ -130,7 +141,9 @@ class AccountSelectView(discord.ui.View):
         
         # ลบข้อความ Ephemeral เดิมทิ้งก่อน แล้วส่งอันใหม่แบบ Public
         await interaction.response.edit_message(content="✅ สร้าง QR เรียบร้อยแล้ว!", view=None, embed=None)
-        await interaction.channel.send(embed=embed, file=file, view=QRView(self.user))
+        msg = await interaction.channel.send(embed=embed, file=file, view=QRView(self.user))
+        # ส่งไปยัง logging channel
+        await send_qr_log(interaction.client, embed, file)
         # ลบ ephemeral message หลังจากผ่านไป 2 วิ
         await asyncio.sleep(2)
         await interaction.delete_original_response()
@@ -148,10 +161,91 @@ class AmountModal(discord.ui.Modal, title="ระบุยอดเงิน"):
             embed = build_embed(self.user, self.accounts[0], amt)
             await interaction.response.edit_message(content="✅ สร้าง QR เรียบร้อยแล้ว!", view=None, embed=None)
             await interaction.channel.send(embed=embed, file=file, view=QRView(self.user))
+            # ส่งไปยัง logging channel
+            await send_qr_log(interaction.client, embed, file)
             await asyncio.sleep(2)
             await interaction.delete_original_response()
         else:
             await interaction.response.edit_message(content="🏦 **เลือกบัญชี:**", view=AccountSelectView(self.accounts, amt, self.user))
+
+class LendAccountSelectView(discord.ui.View):
+    def __init__(self, accounts, base, pct, interest, total, user):
+        super().__init__(timeout=60)
+        self.accounts = accounts
+        self.base = base
+        self.pct = pct
+        self.interest = interest
+        self.total = total
+        self.user = user
+        options = [discord.SelectOption(label=f"บัญชี: {a[:3]}-xxx-{a[-4:]}", value=a, emoji="🏦") for a in accounts]
+        select = discord.ui.Select(placeholder="📌 เลือกบัญชีที่จะรับเงิน...", options=options)
+        select.callback = self.select_callback
+        self.add_item(select)
+
+    async def select_callback(self, interaction: discord.Interaction):
+        if interaction.user.id != self.user.id: return
+        selected_account = interaction.data['values'][0]
+        file, _ = create_qr_with_logo(selected_account, self.total)
+        
+        embed = discord.Embed(title="💰 รายละเอียดเงินกู้ (QR Payment Ready)", color=0xCCCCFF)
+        masked = f"{selected_account[:3]}-xxx-{selected_account[-4:]}" if len(selected_account) >= 10 else selected_account
+        embed.add_field(name="🏦 บัญชีที่รับเงิน", value=f"`{masked}`", inline=False)
+        embed.add_field(name="📊 จำนวนเงินฐาน", value=f"**฿ {self.base:,.2f}**", inline=False)
+        embed.add_field(name="📈 เปอร์เซ็นต์ดอกเบี้ย", value=f"**{self.pct:.2f}%**", inline=False)
+        embed.add_field(name="💸 จำนวนดอกเบี้ย", value=f"**฿ {self.interest:,.2f}**", inline=False)
+        embed.add_field(name="💵 จำนวนเงินทั้งหมด", value=f"**฿ {self.total:,.2f}**", inline=False)
+        embed.set_author(name=f"ผู้ยืม: {self.user.display_name}", icon_url=self.user.display_avatar.url)
+        embed.set_image(url="attachment://qr.png")
+        embed.set_footer(text=f"Ref: {uuid.uuid4().hex[:6].upper()} • วันที่สร้าง: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+        
+        await interaction.response.send_message(embed=embed, file=file, ephemeral=False)
+        # ส่งไปยัง logging channel
+        await send_qr_log(interaction.client, embed, file)
+        # Remove the selector message after sending QR
+        await asyncio.sleep(0.5)
+        await interaction.message.delete()
+
+class LendMoneyModal(discord.ui.Modal, title="รายละเอียดเงินกู้"):
+    base_amount = discord.ui.TextInput(label="จำนวนเงินฐาน (บาท)", placeholder="เช่น 1000", min_length=1)
+    percentage = discord.ui.TextInput(label="เปอร์เซ็นต์ดอกเบี้ย (%)", placeholder="เช่น 5", min_length=1)
+    def __init__(self, accounts, user):
+        super().__init__(); self.accounts = accounts; self.user = user
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            base = float(self.base_amount.value.replace(",", ""))
+            pct = float(self.percentage.value.replace(",", ""))
+        except:
+            return await interaction.response.send_message("❌ กรอกตัวเลขเท่านั้น", ephemeral=True)
+        
+        if base <= 0 or pct < 0:
+            return await interaction.response.send_message("❌ จำนวนเงินและเปอร์เซ็นต์ต้องมากกว่า 0", ephemeral=True)
+        
+        interest = (base * pct) / 100
+        total = base + interest
+        
+        if len(self.accounts) == 1:
+            file, _ = create_qr_with_logo(self.accounts[0], total)
+            embed = discord.Embed(title="💰 รายละเอียดเงินกู้ (QR Payment Ready)", color=0xCCCCFF)
+            masked = f"{self.accounts[0][:3]}-xxx-{self.accounts[0][-4:]}" if len(self.accounts[0]) >= 10 else self.accounts[0]
+            embed.add_field(name="🏦 บัญชีที่รับเงิน", value=f"`{masked}`", inline=False)
+            embed.add_field(name="📊 จำนวนเงินฐาน", value=f"**฿ {base:,.2f}**", inline=False)
+            embed.add_field(name="📈 เปอร์เซ็นต์ดอกเบี้ย", value=f"**{pct:.2f}%**", inline=False)
+            embed.add_field(name="💸 จำนวนดอกเบี้ย", value=f"**฿ {interest:,.2f}**", inline=False)
+            embed.add_field(name="💵 จำนวนเงินทั้งหมด", value=f"**฿ {total:,.2f}**", inline=False)
+            embed.set_author(name=f"ผู้ยืม: {self.user.display_name}", icon_url=self.user.display_avatar.url)
+            embed.set_image(url="attachment://qr.png")
+            embed.set_footer(text=f"Ref: {uuid.uuid4().hex[:6].upper()} • วันที่สร้าง: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+            await interaction.response.send_message(embed=embed, file=file, ephemeral=False)
+            # ส่งไปยัง logging channel
+            await send_qr_log(interaction.client, embed, file)
+        else:
+            embed = discord.Embed(title="💰 รายละเอียดเงินกู้", color=0xCCCCFF)
+            embed.add_field(name="📊 จำนวนเงินฐาน", value=f"**฿ {base:,.2f}**", inline=False)
+            embed.add_field(name="📈 เปอร์เซ็นต์ดอกเบี้ย", value=f"**{pct:.2f}%**", inline=False)
+            embed.add_field(name="💸 จำนวนดอกเบี้ย", value=f"**฿ {interest:,.2f}**", inline=False)
+            embed.add_field(name="💵 จำนวนเงินทั้งหมด", value=f"**฿ {total:,.2f}**", inline=False)
+            embed.set_footer(text="เลือกบัญชีด้านล่าง:")
+            await interaction.response.send_message(embed=embed, view=LendAccountSelectView(self.accounts, base, pct, interest, total, self.user), ephemeral=True)
 
 class MainChoiceView(discord.ui.View):
     def __init__(self, accounts, user):
@@ -165,10 +259,15 @@ class MainChoiceView(discord.ui.View):
             embed = build_embed(self.user, self.accounts[0], 0)
             await interaction.response.edit_message(content="✅ สร้าง QR เรียบร้อยแล้ว!", view=None, embed=None)
             await interaction.channel.send(embed=embed, file=file, view=QRView(self.user))
+            # ส่งไปยัง logging channel
+            await send_qr_log(interaction.client, embed, file)
             await asyncio.sleep(2)
             await interaction.delete_original_response()
         else:
             await interaction.response.edit_message(content="🏦 **เลือกบัญชี:**", view=AccountSelectView(self.accounts, 0, self.user))
+    @discord.ui.button(label="เก็บเงินกู้", style=discord.ButtonStyle.primary, emoji="📊")
+    async def collect_lend(self, interaction, _):
+        await interaction.response.send_modal(LendMoneyModal(self.accounts, self.user))
     @discord.ui.button(label="ยกเลิก", style=discord.ButtonStyle.danger, emoji="✖️")
     async def cancel(self, interaction, _): await close_session(interaction)
 
@@ -190,6 +289,13 @@ class PaymentWizard(commands.Cog):
         if not self.accounts: return await interaction.response.send_message("❌ ไม่พบการตั้งค่าบัญชี", ephemeral=True)
         view = MainChoiceView(self.accounts, interaction.user)
         await interaction.response.send_message(content="💳 **PromptPay QR Wizard**", view=view, ephemeral=True)
+
+    @commands.command(name="pp", description="สร้าง QR Code (ส่งแบบสาธารณะในขั้นตอนสุดท้าย)")
+    async def promptpay_prefix(self, ctx: commands.Context):
+        """Prefix command version of /pp"""
+        if not self.accounts: return await ctx.send("❌ ไม่พบการตั้งค่าบัญชี")
+        view = MainChoiceView(self.accounts, ctx.author)
+        await ctx.send(content="💳 **PromptPay QR Wizard**", view=view)
 
 async def setup(bot):
     await bot.add_cog(PaymentWizard(bot))
