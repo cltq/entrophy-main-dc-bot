@@ -6,3 +6,7 @@ aiohttp
 google-genai
 qrcode
 Pillow
+gtts
+pydub
+pynacl
+ffmpeg

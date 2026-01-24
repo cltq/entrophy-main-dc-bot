@@ -10,3 +10,4 @@ logs
 docker-compose.yml
 restart_info.json
 data
+vc_config.json

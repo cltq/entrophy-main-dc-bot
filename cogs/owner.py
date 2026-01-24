@@ -328,227 +328,251 @@ class Owner(commands.Cog):
         owner_id = int(os.getenv("BOT_OWNER_ID", 0))
         return interaction.user.id == owner_id
 
-    botcontrol = app_commands.Group(name="botcontrol", description="🔧 Bot control panel (Owner only)")
+    async def action_autocomplete(
+        self,
+        interaction: discord.Interaction,
+        current: str,
+    ) -> list[app_commands.Choice[str]]:
+        """Autocomplete for botcontrol action parameter"""
+        actions = [
+            "restart",
+            "shutdown",
+            "reload",
+            "load",
+            "unload",
+            "sync",
+            "cogs",
+            "profile",
+            "pause",
+            "resume",
+        ]
+        return [
+            app_commands.Choice(name=action, value=action)
+            for action in actions
+            if action.startswith(current.lower())
+        ]
 
-    @botcontrol.command(name="restart", description="Restart the bot")
+    @app_commands.command(name="botcontrol", description="🔧 Bot control panel (Owner only)")
     @app_commands.check(bot_control_check)
-    async def botcontrol_restart(self, interaction: discord.Interaction):
-        """Restart the bot"""
+    @app_commands.describe(
+        action="The action to perform (autocomplete available)",
+        args="Arguments for the action (e.g., cog name for reload/load/unload)"
+    )
+    @app_commands.autocomplete(action=action_autocomplete)
+    async def botcontrol(self, interaction: discord.Interaction, action: str, args: str = None):
+        """Bot control command with autocomplete action selection"""
         await interaction.response.defer(ephemeral=True)
-        embed = discord.Embed(
-            title="🔄 Bot Restart",
-            description="The bot is restarting...",
-            color=discord.Color.orange()
-        )
-        await interaction.followup.send(embed=embed, ephemeral=True)
-        await self.bot.close()
-
-    @botcontrol.command(name="shutdown", description="Shut down the bot")
-    @app_commands.check(bot_control_check)
-    async def botcontrol_shutdown(self, interaction: discord.Interaction):
-        """Shut down the bot"""
-        await interaction.response.defer(ephemeral=True)
-        embed = discord.Embed(
-            title="🛑 Bot Shutdown",
-            description="The bot is shutting down...",
-            color=discord.Color.red()
-        )
-        await interaction.followup.send(embed=embed, ephemeral=True)
-        await self.bot.close()
-
-    @botcontrol.command(name="reload", description="Reload a specific cog")
-    @app_commands.check(bot_control_check)
-    @app_commands.describe(cog="The cog to reload")
-    async def botcontrol_reload(self, interaction: discord.Interaction, cog: str):
-        """Reload a specific cog"""
-        await interaction.response.defer(ephemeral=True)
-        try:
-            await self.bot.unload_extension(f"cogs.{cog}")
-            await self.bot.load_extension(f"cogs.{cog}")
+        
+        action = action.lower()
+        
+        # ----- RESTART -----
+        if action == "restart":
             embed = discord.Embed(
-                title="✅ Cog Reloaded",
-                description=f"Successfully reloaded cog: `{cog}`",
-                color=discord.Color.green()
-            )
-            await interaction.followup.send(embed=embed, ephemeral=True)
-        except commands.ExtensionNotFound:
-            embed = discord.Embed(
-                title="❌ Not Found",
-                description=f"Cog `{cog}` not found.",
-                color=discord.Color.red()
-            )
-            await interaction.followup.send(embed=embed, ephemeral=True)
-        except Exception as e:
-            embed = discord.Embed(
-                title="❌ Failed to Reload",
-                description=f"Failed to reload `{cog}`: {e}",
-                color=discord.Color.red()
-            )
-            await interaction.followup.send(embed=embed, ephemeral=True)
-
-    @botcontrol.command(name="load", description="Load a specific cog")
-    @app_commands.check(bot_control_check)
-    @app_commands.describe(cog="The cog to load")
-    async def botcontrol_load(self, interaction: discord.Interaction, cog: str):
-        """Load a specific cog"""
-        await interaction.response.defer(ephemeral=True)
-        try:
-            await self.bot.load_extension(f"cogs.{cog}")
-            embed = discord.Embed(
-                title="✅ Cog Loaded",
-                description=f"Successfully loaded cog: `{cog}`",
-                color=discord.Color.green()
-            )
-            await interaction.followup.send(embed=embed, ephemeral=True)
-        except commands.ExtensionAlreadyLoaded:
-            embed = discord.Embed(
-                title="⚠️ Already Loaded",
-                description=f"Cog `{cog}` is already loaded.",
+                title="🔄 Bot Restart",
+                description="The bot is restarting...",
                 color=discord.Color.orange()
             )
             await interaction.followup.send(embed=embed, ephemeral=True)
-        except commands.ExtensionNotFound:
+            await self.bot.close()
+            return
+        
+        # ----- SHUTDOWN -----
+        if action == "shutdown":
             embed = discord.Embed(
-                title="❌ Not Found",
-                description=f"Cog `{cog}` not found.",
+                title="🛑 Bot Shutdown",
+                description="The bot is shutting down...",
                 color=discord.Color.red()
             )
             await interaction.followup.send(embed=embed, ephemeral=True)
-        except Exception as e:
+            await self.bot.close()
+            return
+        
+        # ----- RELOAD -----
+        if action == "reload":
+            if not args:
+                await interaction.followup.send("❌ Please provide a cog name.", ephemeral=True)
+                return
+            try:
+                await self.bot.unload_extension(f"cogs.{args}")
+                await self.bot.load_extension(f"cogs.{args}")
+                embed = discord.Embed(
+                    title="✅ Cog Reloaded",
+                    description=f"Successfully reloaded cog: `{args}`",
+                    color=discord.Color.green()
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            except commands.ExtensionNotFound:
+                embed = discord.Embed(
+                    title="❌ Not Found",
+                    description=f"Cog `{args}` not found.",
+                    color=discord.Color.red()
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            except Exception as e:
+                embed = discord.Embed(
+                    title="❌ Failed to Reload",
+                    description=f"Failed to reload `{args}`: {e}",
+                    color=discord.Color.red()
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+        
+        # ----- LOAD -----
+        if action == "load":
+            if not args:
+                await interaction.followup.send("❌ Please provide a cog name.", ephemeral=True)
+                return
+            try:
+                await self.bot.load_extension(f"cogs.{args}")
+                embed = discord.Embed(
+                    title="✅ Cog Loaded",
+                    description=f"Successfully loaded cog: `{args}`",
+                    color=discord.Color.green()
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            except commands.ExtensionAlreadyLoaded:
+                embed = discord.Embed(
+                    title="⚠️ Already Loaded",
+                    description=f"Cog `{args}` is already loaded.",
+                    color=discord.Color.orange()
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            except commands.ExtensionNotFound:
+                embed = discord.Embed(
+                    title="❌ Not Found",
+                    description=f"Cog `{args}` not found.",
+                    color=discord.Color.red()
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            except Exception as e:
+                embed = discord.Embed(
+                    title="❌ Failed to Load",
+                    description=f"Failed to load `{args}`: {e}",
+                    color=discord.Color.red()
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+        
+        # ----- UNLOAD -----
+        if action == "unload":
+            if not args:
+                await interaction.followup.send("❌ Please provide a cog name.", ephemeral=True)
+                return
+            if args.lower() == "owner":
+                embed = discord.Embed(
+                    title="❌ Cannot Unload",
+                    description="Cannot unload the Owner cog!",
+                    color=discord.Color.red()
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+                return
+            try:
+                await self.bot.unload_extension(f"cogs.{args}")
+                embed = discord.Embed(
+                    title="✅ Cog Unloaded",
+                    description=f"Successfully unloaded cog: `{args}`",
+                    color=discord.Color.green()
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            except commands.ExtensionNotLoaded:
+                embed = discord.Embed(
+                    title="⚠️ Not Loaded",
+                    description=f"Cog `{args}` is not loaded.",
+                    color=discord.Color.orange()
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            except commands.ExtensionNotFound:
+                embed = discord.Embed(
+                    title="❌ Not Found",
+                    description=f"Cog `{args}` not found.",
+                    color=discord.Color.red()
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            except Exception as e:
+                embed = discord.Embed(
+                    title="❌ Failed to Unload",
+                    description=f"Failed to unload `{args}`: {e}",
+                    color=discord.Color.red()
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+        
+        # ----- SYNC -----
+        if action == "sync":
+            try:
+                synced = await self.bot.tree.sync()
+                embed = discord.Embed(
+                    title="✅ Commands Synced",
+                    description=f"Successfully synced {len(synced)} commands globally.",
+                    color=discord.Color.green()
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            except Exception as e:
+                embed = discord.Embed(
+                    title="❌ Sync Failed",
+                    description=f"Failed to sync commands: {e}",
+                    color=discord.Color.red()
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+        
+        # ----- COGS -----
+        if action == "cogs":
+            cogs = [cog for cog in self.bot.cogs.keys()]
+            if cogs:
+                embed = discord.Embed(
+                    title="📦 Loaded Cogs",
+                    description="\n".join(f"• `{cog}`" for cog in sorted(cogs)),
+                    color=discord.Color.blue()
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            else:
+                await interaction.followup.send("❌ No cogs are currently loaded.", ephemeral=True)
+            return
+        
+        # ----- PROFILE -----
+        if action == "profile":
+            user = self.bot.user
             embed = discord.Embed(
-                title="❌ Failed to Load",
-                description=f"Failed to load `{cog}`: {e}",
-                color=discord.Color.red()
+                title="🤖 Bot Profile Information",
+                color=discord.Color.blue()
             )
+            embed.set_thumbnail(url=user.display_avatar.url)
+            if user.banner:
+                embed.set_image(url=user.banner.url)
+            embed.add_field(name="Username", value=user.name, inline=True)
+            embed.add_field(name="ID", value=user.id, inline=True)
+            embed.add_field(name="Discriminator", value=user.discriminator if user.discriminator != "0" else "None", inline=True)
+            embed.add_field(name="Created At", value=user.created_at.strftime("%Y-%m-%d %H:%M:%S"), inline=False)
+            embed.add_field(name="Servers", value=len(self.bot.guilds), inline=True)
+            embed.add_field(name="Users", value=sum(g.member_count for g in self.bot.guilds), inline=True)
             await interaction.followup.send(embed=embed, ephemeral=True)
-
-    @botcontrol.command(name="unload", description="Unload a specific cog")
-    @app_commands.check(bot_control_check)
-    @app_commands.describe(cog="The cog to unload")
-    async def botcontrol_unload(self, interaction: discord.Interaction, cog: str):
-        """Unload a specific cog"""
-        await interaction.response.defer(ephemeral=True)
-        if cog.lower() == "owner":
+            return
+        
+        # ----- PAUSE -----
+        if action == "pause":
+            self.cycle_paused = True
             embed = discord.Embed(
-                title="❌ Cannot Unload",
-                description="Cannot unload the Owner cog!",
-                color=discord.Color.red()
+                title="⏸️ Status Cycling Paused",
+                description="Status auto-cycling has been paused.",
+                color=discord.Color.orange()
             )
             await interaction.followup.send(embed=embed, ephemeral=True)
             return
-        try:
-            await self.bot.unload_extension(f"cogs.{cog}")
+        
+        # ----- RESUME -----
+        if action == "resume":
+            self.cycle_paused = False
             embed = discord.Embed(
-                title="✅ Cog Unloaded",
-                description=f"Successfully unloaded cog: `{cog}`",
+                title="▶️ Status Cycling Resumed",
+                description="Status auto-cycling has been resumed.",
                 color=discord.Color.green()
             )
             await interaction.followup.send(embed=embed, ephemeral=True)
-        except commands.ExtensionNotLoaded:
-            embed = discord.Embed(
-                title="⚠️ Not Loaded",
-                description=f"Cog `{cog}` is not loaded.",
-                color=discord.Color.orange()
-            )
-            await interaction.followup.send(embed=embed, ephemeral=True)
-        except commands.ExtensionNotFound:
-            embed = discord.Embed(
-                title="❌ Not Found",
-                description=f"Cog `{cog}` not found.",
-                color=discord.Color.red()
-            )
-            await interaction.followup.send(embed=embed, ephemeral=True)
-        except Exception as e:
-            embed = discord.Embed(
-                title="❌ Failed to Unload",
-                description=f"Failed to unload `{cog}`: {e}",
-                color=discord.Color.red()
-            )
-            await interaction.followup.send(embed=embed, ephemeral=True)
-
-    @botcontrol.command(name="sync", description="Sync slash commands globally")
-    @app_commands.check(bot_control_check)
-    async def botcontrol_sync(self, interaction: discord.Interaction):
-        """Sync slash commands globally"""
-        await interaction.response.defer(ephemeral=True)
-        try:
-            synced = await self.bot.tree.sync()
-            embed = discord.Embed(
-                title="✅ Commands Synced",
-                description=f"Successfully synced {len(synced)} commands globally.",
-                color=discord.Color.green()
-            )
-            await interaction.followup.send(embed=embed, ephemeral=True)
-        except Exception as e:
-            embed = discord.Embed(
-                title="❌ Sync Failed",
-                description=f"Failed to sync commands: {e}",
-                color=discord.Color.red()
-            )
-            await interaction.followup.send(embed=embed, ephemeral=True)
-
-    @botcontrol.command(name="cogs", description="List all loaded cogs")
-    @app_commands.check(bot_control_check)
-    async def botcontrol_cogs(self, interaction: discord.Interaction):
-        """List all loaded cogs"""
-        await interaction.response.defer(ephemeral=True)
-        cogs = [cog for cog in self.bot.cogs.keys()]
-        if cogs:
-            embed = discord.Embed(
-                title="📦 Loaded Cogs",
-                description="\n".join(f"• `{cog}`" for cog in sorted(cogs)),
-                color=discord.Color.blue()
-            )
-            await interaction.followup.send(embed=embed, ephemeral=True)
-        else:
-            await interaction.followup.send("❌ No cogs are currently loaded.", ephemeral=True)
-
-    @botcontrol.command(name="profile", description="Show bot profile information")
-    @app_commands.check(bot_control_check)
-    async def botcontrol_profile(self, interaction: discord.Interaction):
-        """Show bot profile information"""
-        await interaction.response.defer(ephemeral=True)
-        user = self.bot.user
-        embed = discord.Embed(
-            title="🤖 Bot Profile Information",
-            color=discord.Color.blue()
-        )
-        embed.set_thumbnail(url=user.display_avatar.url)
-        if user.banner:
-            embed.set_image(url=user.banner.url)
-        embed.add_field(name="Username", value=user.name, inline=True)
-        embed.add_field(name="ID", value=user.id, inline=True)
-        embed.add_field(name="Discriminator", value=user.discriminator if user.discriminator != "0" else "None", inline=True)
-        embed.add_field(name="Created At", value=user.created_at.strftime("%Y-%m-%d %H:%M:%S"), inline=False)
-        embed.add_field(name="Servers", value=len(self.bot.guilds), inline=True)
-        embed.add_field(name="Users", value=sum(g.member_count for g in self.bot.guilds), inline=True)
-        await interaction.followup.send(embed=embed, ephemeral=True)
-
-    @botcontrol.command(name="pause", description="Pause status auto-cycling")
-    @app_commands.check(bot_control_check)
-    async def botcontrol_pause(self, interaction: discord.Interaction):
-        """Pause status auto-cycling"""
-        await interaction.response.defer(ephemeral=True)
-        self.cycle_paused = True
-        embed = discord.Embed(
-            title="⏸️ Status Cycling Paused",
-            description="Status auto-cycling has been paused.",
-            color=discord.Color.orange()
-        )
-        await interaction.followup.send(embed=embed, ephemeral=True)
-
-    @botcontrol.command(name="resume", description="Resume status auto-cycling")
-    @app_commands.check(bot_control_check)
-    async def botcontrol_resume(self, interaction: discord.Interaction):
-        """Resume status auto-cycling"""
-        await interaction.response.defer(ephemeral=True)
-        self.cycle_paused = False
-        embed = discord.Embed(
-            title="▶️ Status Cycling Resumed",
-            description="Status auto-cycling has been resumed.",
-            color=discord.Color.green()
-        )
-        await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+        
+        # ----- UNKNOWN -----
+        await interaction.followup.send(f"❌ Unknown action: `{action}`", ephemeral=True)
 
 
 async def setup(bot):
