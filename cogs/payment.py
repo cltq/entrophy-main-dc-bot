@@ -187,7 +187,7 @@ class LendAccountSelectView(discord.ui.View):
         selected_account = interaction.data['values'][0]
         file, _ = create_qr_with_logo(selected_account, self.total)
         
-        embed = discord.Embed(title="💰 รายละเอียดเงินกู้ (QR Payment Ready)", color=0xCCCCFF)
+        embed = discord.Embed(title="💰 รายละเอียดคืนเงิน (QR Payment Ready)", color=0xCCCCFF)
         masked = f"{selected_account[:3]}-xxx-{selected_account[-4:]}" if len(selected_account) >= 10 else selected_account
         embed.add_field(name="🏦 บัญชีที่รับเงิน", value=f"`{masked}`", inline=False)
         embed.add_field(name="📊 จำนวนเงินฐาน", value=f"**฿ {self.base:,.2f}**", inline=False)
@@ -205,7 +205,7 @@ class LendAccountSelectView(discord.ui.View):
         await asyncio.sleep(0.5)
         await interaction.message.delete()
 
-class LendMoneyModal(discord.ui.Modal, title="รายละเอียดเงินกู้"):
+class LendMoneyModal(discord.ui.Modal, title="รายละเอียดคืนเงิน"):
     base_amount = discord.ui.TextInput(label="จำนวนเงินฐาน (บาท)", placeholder="เช่น 1000", min_length=1)
     percentage = discord.ui.TextInput(label="เปอร์เซ็นต์ดอกเบี้ย (%)", placeholder="เช่น 5", min_length=1)
     def __init__(self, accounts, user):
@@ -225,7 +225,7 @@ class LendMoneyModal(discord.ui.Modal, title="รายละเอียดเ�
         
         if len(self.accounts) == 1:
             file, _ = create_qr_with_logo(self.accounts[0], total)
-            embed = discord.Embed(title="💰 รายละเอียดเงินกู้ (QR Payment Ready)", color=0xCCCCFF)
+            embed = discord.Embed(title="💰 รายละเอียดคืนเงิน (QR Payment Ready)", color=0xCCCCFF)
             masked = f"{self.accounts[0][:3]}-xxx-{self.accounts[0][-4:]}" if len(self.accounts[0]) >= 10 else self.accounts[0]
             embed.add_field(name="🏦 บัญชีที่รับเงิน", value=f"`{masked}`", inline=False)
             embed.add_field(name="📊 จำนวนเงินฐาน", value=f"**฿ {base:,.2f}**", inline=False)
@@ -239,7 +239,7 @@ class LendMoneyModal(discord.ui.Modal, title="รายละเอียดเ�
             # ส่งไปยัง logging channel
             await send_qr_log(interaction.client, embed, file)
         else:
-            embed = discord.Embed(title="💰 รายละเอียดเงินกู้", color=0xCCCCFF)
+            embed = discord.Embed(title="💰 รายละเอียดคืนเงิน", color=0xCCCCFF)
             embed.add_field(name="📊 จำนวนเงินฐาน", value=f"**฿ {base:,.2f}**", inline=False)
             embed.add_field(name="📈 เปอร์เซ็นต์ดอกเบี้ย", value=f"**{pct:.2f}%**", inline=False)
             embed.add_field(name="💸 จำนวนดอกเบี้ย", value=f"**฿ {interest:,.2f}**", inline=False)
@@ -265,7 +265,7 @@ class MainChoiceView(discord.ui.View):
             await interaction.delete_original_response()
         else:
             await interaction.response.edit_message(content="🏦 **เลือกบัญชี:**", view=AccountSelectView(self.accounts, 0, self.user))
-    @discord.ui.button(label="เก็บเงินกู้", style=discord.ButtonStyle.primary, emoji="📊")
+    @discord.ui.button(label="เก็บคืนเงิน", style=discord.ButtonStyle.primary, emoji="📊")
     async def collect_lend(self, interaction, _):
         await interaction.response.send_modal(LendMoneyModal(self.accounts, self.user))
     @discord.ui.button(label="ยกเลิก", style=discord.ButtonStyle.danger, emoji="✖️")

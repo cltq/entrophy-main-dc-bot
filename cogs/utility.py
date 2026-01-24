@@ -12,7 +12,7 @@ def get_current_time():
     return current_datetime.strftime("%H:%M:%S")
 
 class Utility(commands.Cog):
-    """Utility commands"""
+    """Utility commands - server-only functionality"""
     def __init__(self, bot):
         self.bot = bot
         # Add context menu command
@@ -30,22 +30,10 @@ class Utility(commands.Cog):
         """Show bot uptime (prefix)"""
         await ctx.send(f"⏱️ Bot uptime: `{get_uptime(self.bot.launch_time)}`")
 
-    @discord.app_commands.command(name="uptime", description="Show bot uptime")
-    @discord.app_commands.allowed_installs(guilds=True, users=True)
-    @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
-    async def slash_uptime(self, interaction: discord.Interaction):
-        await interaction.response.send_message(f"⏱️ Bot uptime: `{get_uptime(self.bot.launch_time)}`")
-
     @commands.command(name="rtclock")
     async def rtclock(self, ctx):
         """Show bot realtime (prefix)"""
         await ctx.send(f"⏱️ Bot Realtime: `{get_current_time()}`")
-
-    @discord.app_commands.command(name="rtclock", description="Show bot realtime")
-    @discord.app_commands.allowed_installs(guilds=True, users=True)
-    @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
-    async def slash_rtclock(self, interaction: discord.Interaction):
-        await interaction.response.send_message(f"⏱️ Bot Realtime: `{get_current_time()}`")
 
     @commands.command(name="usr")
     async def userinfo(self, ctx, user: discord.User = None):
@@ -61,37 +49,6 @@ class Utility(commands.Cog):
 
         embed = await self._create_userinfo_embed(user, member, ctx.author)
         await ctx.send(embed=embed)
-
-    @discord.app_commands.command(name="usr", description="Show user information")
-    @discord.app_commands.describe(user="The user to get information about (leave empty for yourself)")
-    @discord.app_commands.allowed_installs(guilds=True, users=True)
-    @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
-    async def slash_userinfo(self, interaction: discord.Interaction, user: discord.User = None):
-        user = user or interaction.user
-
-        # Try to get member object if in a guild
-        member = None
-        if interaction.guild and isinstance(user, discord.Member):
-            member = user
-        elif interaction.guild:
-            member = interaction.guild.get_member(user.id)
-
-        embed = await self._create_userinfo_embed(user, member, interaction.user)
-        await interaction.response.send_message(embed=embed)
-
-    @discord.app_commands.allowed_installs(guilds=True, users=True)
-    @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
-    async def context_userinfo(self, interaction: discord.Interaction, user: discord.User):
-        """Context menu command for user info"""
-        # Try to get member object if in a guild
-        member = None
-        if interaction.guild and isinstance(user, discord.Member):
-            member = user
-        elif interaction.guild:
-            member = interaction.guild.get_member(user.id)
-
-        embed = await self._create_userinfo_embed(user, member, interaction.user)
-        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     async def _create_userinfo_embed(self, user: discord.User, member: discord.Member, requester: discord.User):
         """Helper method to create userinfo embed"""
@@ -223,12 +180,6 @@ class Utility(commands.Cog):
         embed.set_footer(text=f"Requested by {requester}", icon_url=requester.display_avatar.url)
 
         return embed
-    
-    @discord.app_commands.command(name="dashboard", description="Send the Bot's Dashboard link.")
-    @discord.app_commands.allowed_installs(guilds=True, users=True)
-    @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
-    async def dashboard(self, interaction: discord.Interaction):
-        await interaction.response.send_message(f"⏱️ Bot Dashboard: https://entrophy-main-dc-bot.onrender.com")
 
 async def setup(bot):
     await bot.add_cog(Utility(bot))
