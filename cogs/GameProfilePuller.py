@@ -197,6 +197,16 @@ class GameProfilePuller(commands.Cog):
             ) as resp:
                 friends = (await resp.json()).get("count", 0)
 
+            # 6) Get 3D Avatar Image
+            avatar_image_url = None
+            async with self.session.get(
+                f"https://thumbnails.roblox.com/v1/users/avatar?userIds={user_id}&size=720x720&format=Png&isCircular=false"
+            ) as resp:
+                if resp.status == 200:
+                    avatar_data = await resp.json()
+                    if avatar_data.get("data") and len(avatar_data["data"]) > 0:
+                        avatar_image_url = avatar_data["data"][0].get("imageUrl")
+
             return {
                 "id": user_id,
                 "displayName": user_info.get("displayName"),
@@ -206,7 +216,8 @@ class GameProfilePuller(commands.Cog):
                 "following": following,
                 "friends": friends,
                 "description": user_info.get("description", "No description"),
-                "isBanned": user_info.get("isBanned", False)
+                "isBanned": user_info.get("isBanned", False),
+                "avatarImageUrl": avatar_image_url
             }
         except Exception as e:
             print(f"[ROBLOX ERROR] {e}")
@@ -287,9 +298,9 @@ class GameProfilePuller(commands.Cog):
         if user_data.get("isBanned"):
             embed.add_field(name="⚠️ Status", value="🚫 **BANNED**", inline=False)
         
-        # Add 3D avatar viewer
-        avatar_3d_url = f"https://www.roblox.com/thumbs/avatar-3d/?userId={user_data['id']}&width=720&height=720"
-        embed.set_image(url=avatar_3d_url)
+        # Add 3D avatar viewer image from API
+        if user_data.get("avatarImageUrl"):
+            embed.set_image(url=user_data.get("avatarImageUrl"))
         
         # Add profile link
         embed.add_field(
