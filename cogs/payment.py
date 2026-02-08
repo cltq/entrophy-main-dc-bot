@@ -197,6 +197,7 @@ class QRView(discord.ui.View):
         self.user = user
         self.ref_id = ref_id
         self.bot = bot
+        self.message = None
 
     @discord.ui.button(label="ชำระแล้ว", style=discord.ButtonStyle.success, emoji="✅")
     async def paid_button(self, interaction: discord.Interaction, _):

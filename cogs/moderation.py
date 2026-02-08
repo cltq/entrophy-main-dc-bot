@@ -40,7 +40,11 @@ class Moderation(commands.Cog):
 
         await log_channel.send(embed=embed)
 
-    mod = app_commands.Group(name="mod", description="🔨 Moderation commands")
+    mod = app_commands.Group(
+        name="mod",
+        description="🔨 Moderation commands",
+        allowed_contexts=app_commands.AppCommandContext(guild=True)
+    )
 
     @mod.command(name="kick", description="Kick a member from the server")
     @app_commands.check(moderation_check)

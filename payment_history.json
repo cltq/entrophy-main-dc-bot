@@ -1,0 +1,134 @@
+{
+  "44CBF3": {
+    "ref_id": "44CBF3",
+    "user_id": 969088519161139270,
+    "user_name": "fumiyourbae",
+    "account": "0853460393",
+    "amount": 189.1,
+    "type": "loan_return",
+    "status": "CLOSED",
+    "created_at": "2026-01-24 19:12:53",
+    "status_history": [
+      {
+        "status": "PENDING",
+        "timestamp": "2026-01-24 19:12:53",
+        "action_by": "system"
+      },
+      {
+        "status": "CLOSED",
+        "timestamp": "2026-01-24 19:12:56",
+        "action_by": "fumiyourbae",
+        "from": "PENDING"
+      }
+    ]
+  },
+  "12B0A4": {
+    "ref_id": "12B0A4",
+    "user_id": 969088519161139270,
+    "user_name": "fumiyourbae",
+    "account": "0853460393",
+    "amount": 1650.0,
+    "type": "loan_return",
+    "status": "PENDING",
+    "created_at": "2026-01-25 23:46:34",
+    "status_history": [
+      {
+        "status": "PENDING",
+        "timestamp": "2026-01-25 23:46:34",
+        "action_by": "system"
+      }
+    ]
+  },
+  "541776": {
+    "ref_id": "541776",
+    "user_id": 969088519161139270,
+    "user_name": "fumiyourbae",
+    "account": "0853460393",
+    "amount": 700.0,
+    "type": "regular",
+    "status": "PAID",
+    "created_at": "2026-01-29 10:59:57",
+    "status_history": [
+      {
+        "status": "PENDING",
+        "timestamp": "2026-01-29 10:59:57",
+        "action_by": "system"
+      },
+      {
+        "status": "PAID",
+        "timestamp": "2026-01-29 11:00:13",
+        "action_by": "fumiyourbae",
+        "from": "PENDING"
+      }
+    ]
+  },
+  "72719A": {
+    "ref_id": "72719A",
+    "user_id": 969088519161139270,
+    "user_name": "fumiyourbae",
+    "account": "0853460393",
+    "amount": 67.0,
+    "type": "regular",
+    "status": "PENDING",
+    "created_at": "2026-01-29 14:52:23",
+    "status_history": [
+      {
+        "status": "PENDING",
+        "timestamp": "2026-01-29 14:52:23",
+        "action_by": "system"
+      }
+    ]
+  },
+  "2FA35C": {
+    "ref_id": "2FA35C",
+    "user_id": 969088519161139270,
+    "user_name": "fumiyourbae",
+    "account": "0853460393",
+    "amount": 67.0,
+    "type": "regular",
+    "status": "CLOSED",
+    "created_at": "2026-01-29 14:52:31",
+    "status_history": [
+      {
+        "status": "PENDING",
+        "timestamp": "2026-01-29 14:52:31",
+        "action_by": "system"
+      },
+      {
+        "status": "PAID",
+        "timestamp": "2026-01-29 14:52:36",
+        "action_by": "fumiyourbae",
+        "from": "PENDING"
+      },
+      {
+        "status": "CLOSED",
+        "timestamp": "2026-01-29 14:52:53",
+        "action_by": "fumiyourbae",
+        "from": "PAID"
+      }
+    ]
+  },
+  "5B12F4": {
+    "ref_id": "5B12F4",
+    "user_id": 969088519161139270,
+    "user_name": "fumiyourbae",
+    "account": "0853460393",
+    "amount": 1270000.0,
+    "type": "regular",
+    "status": "CLOSED",
+    "created_at": "2026-01-29 14:53:10",
+    "status_history": [
+      {
+        "status": "PENDING",
+        "timestamp": "2026-01-29 14:53:10",
+        "action_by": "system"
+      },
+      {
+        "status": "CLOSED",
+        "timestamp": "2026-01-29 14:53:20",
+        "action_by": "fumiyourbae",
+        "from": "PENDING"
+      }
+    ]
+  }
+}

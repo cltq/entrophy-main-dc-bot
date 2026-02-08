@@ -59,6 +59,7 @@ class TTS(commands.Cog):
             print(f"[TTS CLEANUP ERROR] {e}")
 
     voice_group = app_commands.Group(name="bot", description="🤖 Bot voice commands")
+    voice_group.allowed_contexts(guilds=True)
 
     @voice_group.command(name="join", description="Join your current voice channel")
     @app_commands.describe()

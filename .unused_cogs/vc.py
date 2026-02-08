@@ -48,6 +48,7 @@ class VoiceInterface(commands.Cog):
     
     # -------- VOICE INTERFACE COMMANDS --------
     voice_group = app_commands.Group(name="vc", description="🎙️ Voice Interface")
+    voice_group.allowed_contexts(guilds=True)
     
     # -------- CREATE TEMPORARY VC --------
     @voice_group.command(name="create", description="Create a temporary voice channel")
