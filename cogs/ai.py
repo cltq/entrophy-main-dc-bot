@@ -2,15 +2,23 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import google.genai as genai
+from google.genai import types
 import json
 import os
+import glob
+import fnmatch
 from typing import Literal
+from pathlib import Path
 
 # --- การตั้งค่า Configuration (Global) ---
 # หมายเหตุ: ควรย้าย API Key ไปไว้ใน .env หรือ config หลักถ้าทำได้
 GEMINI_API_KEY = str(os.getenv("GEMINI_API_KEY")) # ใส่ API Key ของ Gemini ที่นี่
 AIMODEL = 'gemini-2.5-flash'  # ตั้งค่าโมเดลเริ่มต้น
 CONFIG_FILE = './config/ai_channel_config.json'
+PROJECT_ROOT = Path(__file__).parent.parent.resolve()  # Root of project for file tools
+
+# Blocked files/patterns for security
+BLOCKED_PATTERNS = ['.env', '*.key', '*.pem', '*secret*', '*credential*', '*password*']
 
 # คำสั่งภาษาอังกฤษ (Default)
 INSTRUCTIONS_EN = """You are an all-purpose AI assistant designed to help the user with any task, question, or problem across all topics and domains. Your role is to provide accurate, clear, thoughtful, and practical assistance at all times. Your answers should be polite, friendly, and easy to understand, while adapting the depth and complexity of explanations to suit the user's needs. You should strive to be helpful in areas such as learning, problem-solving, programming, writing, translation, planning, analysis, creativity, and general advice. If a request is unclear or lacks necessary information, you should ask for clarification in a respectful manner. When multiple approaches or solutions exist, present the most suitable one first and explain it clearly, while also mentioning alternatives when relevant. You must prioritize correctness, safety, and usefulness, avoid providing harmful, illegal, or misleading information, and remain neutral and supportive in all interactions. Your ultimate goal is to assist the user effectively, helping them understand concepts, overcome challenges, and achieve their goals with confidence and clarity."""
@@ -44,6 +52,229 @@ def get_instruction_by_language(language: str) -> str:
     else:  # default to english
         return INSTRUCTIONS_EN
 
+
+# --- File Tool Functions for Gemini ---
+
+def is_path_safe(file_path: str) -> tuple[bool, str]:
+    """Check if a file path is safe to access"""
+    try:
+        # Resolve the full path
+        full_path = (PROJECT_ROOT / file_path).resolve()
+        
+        # Check if path is within project root
+        if not str(full_path).startswith(str(PROJECT_ROOT)):
+            return False, "Access denied: Path is outside project directory"
+        
+        # Check against blocked patterns
+        filename = full_path.name
+        for pattern in BLOCKED_PATTERNS:
+            if fnmatch.fnmatch(filename.lower(), pattern.lower()):
+                return False, f"Access denied: File matches blocked pattern '{pattern}'"
+        
+        return True, str(full_path)
+    except Exception as e:
+        return False, f"Invalid path: {e}"
+
+
+def tool_read_file(file_path: str) -> dict:
+    """Read contents of a file from the project"""
+    safe, result = is_path_safe(file_path)
+    if not safe:
+        return {"error": result}
+    
+    full_path = Path(result)
+    if not full_path.exists():
+        return {"error": f"File not found: {file_path}"}
+    if not full_path.is_file():
+        return {"error": f"Not a file: {file_path}"}
+    
+    try:
+        # Limit file size to 100KB
+        if full_path.stat().st_size > 100 * 1024:
+            return {"error": "File too large (max 100KB)"}
+        
+        content = full_path.read_text(encoding='utf-8', errors='replace')
+        return {
+            "file_path": file_path,
+            "content": content,
+            "lines": len(content.splitlines()),
+            "size_bytes": len(content.encode('utf-8'))
+        }
+    except Exception as e:
+        return {"error": f"Failed to read file: {e}"}
+
+
+def tool_list_files(directory: str = ".") -> dict:
+    """List files in a directory"""
+    safe, result = is_path_safe(directory)
+    if not safe:
+        return {"error": result}
+    
+    full_path = Path(result)
+    if not full_path.exists():
+        return {"error": f"Directory not found: {directory}"}
+    if not full_path.is_dir():
+        return {"error": f"Not a directory: {directory}"}
+    
+    try:
+        items = []
+        for item in sorted(full_path.iterdir()):
+            # Skip hidden files and blocked patterns
+            if item.name.startswith('.'):
+                continue
+            safe_item, _ = is_path_safe(str(item.relative_to(PROJECT_ROOT)))
+            if not safe_item:
+                continue
+            
+            item_type = "directory" if item.is_dir() else "file"
+            items.append({"name": item.name, "type": item_type})
+        
+        return {"directory": directory, "items": items, "count": len(items)}
+    except Exception as e:
+        return {"error": f"Failed to list directory: {e}"}
+
+
+def tool_search_files(pattern: str, directory: str = ".") -> dict:
+    """Search for files matching a pattern"""
+    safe, result = is_path_safe(directory)
+    if not safe:
+        return {"error": result}
+    
+    full_path = Path(result)
+    if not full_path.exists():
+        return {"error": f"Directory not found: {directory}"}
+    
+    try:
+        matches = []
+        for item in full_path.rglob(pattern):
+            # Skip if outside project or blocked
+            try:
+                rel_path = item.relative_to(PROJECT_ROOT)
+                safe_item, _ = is_path_safe(str(rel_path))
+                if safe_item and not any(part.startswith('.') for part in rel_path.parts):
+                    matches.append(str(rel_path))
+            except ValueError:
+                continue
+        
+        # Limit results
+        matches = matches[:50]
+        return {"pattern": pattern, "directory": directory, "matches": matches, "count": len(matches)}
+    except Exception as e:
+        return {"error": f"Failed to search files: {e}"}
+
+
+def tool_create_file(file_path: str, content: str) -> dict:
+    """Create a new file with the given content"""
+    safe, result = is_path_safe(file_path)
+    if not safe:
+        return {"error": result}
+    
+    full_path = Path(result)
+    
+    # Don't allow overwriting existing files for safety
+    if full_path.exists():
+        return {"error": f"File already exists: {file_path}. Use a different name or delete it first."}
+    
+    try:
+        # Create parent directories if needed
+        full_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Write the file
+        full_path.write_text(content, encoding='utf-8')
+        
+        return {
+            "success": True,
+            "file_path": file_path,
+            "size_bytes": len(content.encode('utf-8')),
+            "lines": len(content.splitlines())
+        }
+    except Exception as e:
+        return {"error": f"Failed to create file: {e}"}
+
+
+# Tool dispatch map
+TOOL_FUNCTIONS = {
+    "read_file": tool_read_file,
+    "list_files": tool_list_files,
+    "search_files": tool_search_files,
+    "create_file": tool_create_file,
+}
+
+# Gemini Tool Definitions
+FILE_TOOLS = types.Tool(
+    function_declarations=[
+        types.FunctionDeclaration(
+            name="read_file",
+            description="Read the contents of a file from the project. Returns file content, line count, and size.",
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "file_path": types.Schema(
+                        type=types.Type.STRING,
+                        description="Relative path to the file from project root (e.g., 'main.py' or 'cogs/ai.py')"
+                    )
+                },
+                required=["file_path"]
+            )
+        ),
+        types.FunctionDeclaration(
+            name="list_files",
+            description="List all files and directories in a given directory.",
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "directory": types.Schema(
+                        type=types.Type.STRING,
+                        description="Relative path to directory (default: '.' for project root)"
+                    )
+                }
+            )
+        ),
+        types.FunctionDeclaration(
+            name="search_files",
+            description="Search for files matching a glob pattern (e.g., '*.py', '**/*.json').",
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "pattern": types.Schema(
+                        type=types.Type.STRING,
+                        description="Glob pattern to match files (e.g., '*.py', '**/*.md')"
+                    ),
+                    "directory": types.Schema(
+                        type=types.Type.STRING,
+                        description="Directory to search in (default: '.' for project root)"
+                    )
+                },
+                required=["pattern"]
+            )
+        ),
+        types.FunctionDeclaration(
+            name="create_file",
+            description="Create a new file with the specified content. Cannot overwrite existing files.",
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "file_path": types.Schema(
+                        type=types.Type.STRING,
+                        description="Relative path for the new file (e.g., 'scripts/hello.py')"
+                    ),
+                    "content": types.Schema(
+                        type=types.Type.STRING,
+                        description="Content to write to the file"
+                    )
+                },
+                required=["file_path", "content"]
+            )
+        ),
+    ]
+)
+
+
+def execute_tool_call(tool_name: str, tool_args: dict) -> dict:
+    """Execute a tool call and return the result"""
+    if tool_name in TOOL_FUNCTIONS:
+        return TOOL_FUNCTIONS[tool_name](**tool_args)
+    return {"error": f"Unknown tool: {tool_name}"}
 
 class AI(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -325,7 +556,8 @@ class AI(commands.Cog):
         question="คำถามที่คุณต้องการถาม",
         language="เลือกภาษาของคำสั่ง (Default: English)",
         custom_prompt="คำสั่งแบบกำหนดเอง (ถ้าต้องการ)",
-        model="รุ่นโมเดล"
+        model="รุ่นโมเดล",
+        use_tools="Enable file tools (read/list/search/create files)"
     )
     async def slash_ask(
         self,
@@ -333,7 +565,8 @@ class AI(commands.Cog):
         question: str,
         language: Literal["English", "Thai"] = "English",
         custom_prompt: str = None,
-        model: str = AIMODEL
+        model: str = AIMODEL,
+        use_tools: bool = False
     ):
         await interaction.response.defer()
 
@@ -347,14 +580,78 @@ class AI(commands.Cog):
             else:
                 final_prompt = get_instruction_by_language(language)
             
+            # Build config with optional tools
+            config = types.GenerateContentConfig(
+                system_instruction=final_prompt,
+                tools=[FILE_TOOLS] if use_tools else None
+            )
+            
+            # Initial request
+            contents = [types.Content(role="user", parts=[types.Part(text=question)])]
+            
             response = self.client.models.generate_content(
                 model=model,
-                contents=question,
-                config={"system_instruction": final_prompt}
+                contents=contents,
+                config=config
             )
-            response_text = response.text
+            
+            # Handle function calling loop (max 5 iterations)
+            max_iterations = 5
+            iteration = 0
+            
+            while iteration < max_iterations:
+                # Check if response has function calls
+                if not response.candidates or not response.candidates[0].content.parts:
+                    break
+                    
+                function_calls = [
+                    part.function_call 
+                    for part in response.candidates[0].content.parts 
+                    if hasattr(part, 'function_call') and part.function_call
+                ]
+                
+                if not function_calls:
+                    break  # No more function calls, we have the final response
+                
+                # Add assistant response to conversation
+                contents.append(response.candidates[0].content)
+                
+                # Execute each function call and collect results
+                function_responses = []
+                for fc in function_calls:
+                    tool_name = fc.name
+                    tool_args = dict(fc.args) if fc.args else {}
+                    
+                    # Execute the tool
+                    result = execute_tool_call(tool_name, tool_args)
+                    
+                    function_responses.append(
+                        types.Part(
+                            function_response=types.FunctionResponse(
+                                name=tool_name,
+                                response=result
+                            )
+                        )
+                    )
+                
+                # Add function responses to conversation
+                contents.append(types.Content(role="user", parts=function_responses))
+                
+                # Get next response
+                response = self.client.models.generate_content(
+                    model=model,
+                    contents=contents,
+                    config=config
+                )
+                
+                iteration += 1
+            
+            # Extract final text response
+            response_text = response.text if response.text else "No response generated."
 
             header = f"**Q:** {question}\n"
+            if use_tools:
+                header += "🔧 *File tools enabled*\n"
                 
             if len(response_text) > 1900:
                 await interaction.followup.send(f"{header}**A:** (คำตอบยาวเกินไป กำลังส่งแยก...)")
