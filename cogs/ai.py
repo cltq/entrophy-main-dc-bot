@@ -7,6 +7,8 @@ import json
 import os
 import glob
 import fnmatch
+import aiohttp
+import re
 from typing import Literal
 from pathlib import Path
 
@@ -192,12 +194,128 @@ def tool_create_file(file_path: str, content: str) -> dict:
         return {"error": f"Failed to create file: {e}"}
 
 
-# Tool dispatch map
+async def tool_browse_url(url: str) -> dict:
+    """Browse a URL and return the webpage content as text"""
+    # Validate URL
+    if not url.startswith(('http://', 'https://')):
+        return {"error": "Invalid URL: must start with http:// or https://"}
+    
+    try:
+        timeout = aiohttp.ClientTimeout(total=10)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(url, headers=headers, allow_redirects=True) as response:
+                if response.status != 200:
+                    return {"error": f"HTTP error {response.status}"}
+                
+                content_type = response.headers.get('Content-Type', '')
+                if 'text/html' not in content_type and 'text/plain' not in content_type:
+                    return {"error": f"Unsupported content type: {content_type}"}
+                
+                html = await response.text()
+                
+                # Strip HTML tags to get plain text
+                # Remove script and style elements
+                html = re.sub(r'<script[^>]*>.*?</script>', '', html, flags=re.DOTALL | re.IGNORECASE)
+                html = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
+                # Remove HTML tags
+                text = re.sub(r'<[^>]+>', ' ', html)
+                # Clean up whitespace
+                text = re.sub(r'\s+', ' ', text).strip()
+                # Decode HTML entities
+                text = text.replace('&nbsp;', ' ').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
+                
+                # Limit content size (max 50KB of text)
+                if len(text) > 50000:
+                    text = text[:50000] + "... [content truncated]"
+                
+                return {
+                    "url": url,
+                    "content": text,
+                    "length": len(text)
+                }
+    except aiohttp.ClientError as e:
+        return {"error": f"Connection error: {e}"}
+    except Exception as e:
+        return {"error": f"Failed to browse URL: {e}"}
+
+
+async def tool_web_search(query: str, num_results: int = 5) -> dict:
+    """Search the web using DuckDuckGo and return results"""
+    if not query or len(query.strip()) == 0:
+        return {"error": "Search query cannot be empty"}
+    
+    # Limit results
+    num_results = min(max(1, num_results), 10)
+    
+    try:
+        # Use DuckDuckGo HTML search
+        search_url = f"https://html.duckduckgo.com/html/?q={query.replace(' ', '+')}"
+        
+        timeout = aiohttp.ClientTimeout(total=10)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(search_url, headers=headers) as response:
+                if response.status != 200:
+                    return {"error": f"Search failed with status {response.status}"}
+                
+                html = await response.text()
+                
+                # Parse results from DuckDuckGo HTML
+                results = []
+                
+                # Find result blocks - DuckDuckGo uses class="result"
+                result_pattern = r'<a rel="nofollow" class="result__a" href="([^"]+)"[^>]*>([^<]+)</a>'
+                snippet_pattern = r'<a class="result__snippet"[^>]*>([^<]+(?:<[^>]+>[^<]*</[^>]+>)*[^<]*)</a>'
+                
+                # Find all result links
+                links = re.findall(result_pattern, html)
+                snippets = re.findall(snippet_pattern, html)
+                
+                for i, (url, title) in enumerate(links[:num_results]):
+                    result = {
+                        "title": title.strip(),
+                        "url": url
+                    }
+                    if i < len(snippets):
+                        # Clean snippet of HTML tags
+                        snippet = re.sub(r'<[^>]+>', '', snippets[i])
+                        result["snippet"] = snippet.strip()
+                    results.append(result)
+                
+                if not results:
+                    return {"query": query, "results": [], "message": "No results found"}
+                
+                return {
+                    "query": query,
+                    "results": results,
+                    "count": len(results)
+                }
+                
+    except aiohttp.ClientError as e:
+        return {"error": f"Connection error: {e}"}
+    except Exception as e:
+        return {"error": f"Search failed: {e}"}
+
+
+# Tool dispatch map (sync tools)
 TOOL_FUNCTIONS = {
     "read_file": tool_read_file,
     "list_files": tool_list_files,
     "search_files": tool_search_files,
     "create_file": tool_create_file,
+}
+
+# Async tool dispatch map
+ASYNC_TOOL_FUNCTIONS = {
+    "browse_url": tool_browse_url,
+    "web_search": tool_web_search,
 }
 
 # Gemini Tool Definitions
@@ -266,14 +384,48 @@ FILE_TOOLS = types.Tool(
                 required=["file_path", "content"]
             )
         ),
+        types.FunctionDeclaration(
+            name="browse_url",
+            description="Browse a webpage and return its text content. Use this to access external websites, documentation, or any URL.",
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "url": types.Schema(
+                        type=types.Type.STRING,
+                        description="Full URL to browse (must start with http:// or https://)"
+                    )
+                },
+                required=["url"]
+            )
+        ),
+        types.FunctionDeclaration(
+            name="web_search",
+            description="Search the web for information using DuckDuckGo. Returns titles, URLs, and snippets of matching results.",
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "query": types.Schema(
+                        type=types.Type.STRING,
+                        description="Search query (e.g., 'Python async tutorial', 'latest news about AI')"
+                    ),
+                    "num_results": types.Schema(
+                        type=types.Type.INTEGER,
+                        description="Number of results to return (1-10, default: 5)"
+                    )
+                },
+                required=["query"]
+            )
+        ),
     ]
 )
 
 
-def execute_tool_call(tool_name: str, tool_args: dict) -> dict:
-    """Execute a tool call and return the result"""
+async def execute_tool_call(tool_name: str, tool_args: dict) -> dict:
+    """Execute a tool call and return the result (handles both sync and async tools)"""
     if tool_name in TOOL_FUNCTIONS:
         return TOOL_FUNCTIONS[tool_name](**tool_args)
+    if tool_name in ASYNC_TOOL_FUNCTIONS:
+        return await ASYNC_TOOL_FUNCTIONS[tool_name](**tool_args)
     return {"error": f"Unknown tool: {tool_name}"}
 
 class AI(commands.Cog):
@@ -623,7 +775,7 @@ class AI(commands.Cog):
                     tool_args = dict(fc.args) if fc.args else {}
                     
                     # Execute the tool
-                    result = execute_tool_call(tool_name, tool_args)
+                    result = await execute_tool_call(tool_name, tool_args)
                     
                     function_responses.append(
                         types.Part(

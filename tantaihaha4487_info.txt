@@ -1,0 +1,27 @@
+GitHub Profile Information for tantaihaha4487:
+
+Name: TantaiHaha (tantaihaha4487)
+Bio: 💭 Lazy😗
+Followers: 2
+Following: 2
+Location: Thailand
+Repositories: 44
+Stars: 3
+
+README.md content:
+- Hi, I'm TantaiHaha!
+- => Fake it till you make it.
+- My name's Tantai, I'm 18 y/o
+- I am a self taught Programer
+- Studying at Narinukun School
+- Working on Full stack Developer & Programer
+- Learning about Web developer, Software developer
+- Main languages: JavaScript, Java
+- Interested in Software developer
+- Love lofi and Stay Low-key
+
+Pinned Repositories:
+- DamageIndicator (Java): Plugin displaying damage for survival experience.
+- AutoItemInActionbar (Java): Minecraft plugin, Refill your in hand items instantly.
+- Mashiro-Bot (JavaScript): A discord bot
+- SuperPickaxeMod (Java): Fabric Mod Pickaxe with 3*3 block breaking ability. Server friendly.
