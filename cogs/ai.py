@@ -5,12 +5,20 @@ import google.genai as genai
 from google.genai import types
 import json
 import os
-import glob
-import fnmatch
 import aiohttp
 import re
 from typing import Literal
 from pathlib import Path
+import urllib.request
+
+# --- Load mcplib from Gitea ---
+MCPLIB_URL = 'http://asane.local:3002/fumi/SernaCore-MCPLibrary/raw/branch/main/mcplib.py'
+try:
+    exec(urllib.request.urlopen(MCPLIB_URL, timeout=10).read().decode('utf-8'))
+    MCPLIB_AVAILABLE = True
+except Exception as e:
+    print(f"⚠️ Warning: Could not load mcplib from {MCPLIB_URL}: {e}")
+    MCPLIB_AVAILABLE = False
 
 # --- การตั้งค่า Configuration (Global) ---
 # หมายเหตุ: ควรย้าย API Key ไปไว้ใน .env หรือ config หลักถ้าทำได้
@@ -18,9 +26,6 @@ GEMINI_API_KEY = str(os.getenv("GEMINI_API_KEY")) # ใส่ API Key ของ 
 AIMODEL = 'gemini-2.5-flash'  # ตั้งค่าโมเดลเริ่มต้น
 CONFIG_FILE = './config/ai_channel_config.json'
 PROJECT_ROOT = Path(__file__).parent.parent.resolve()  # Root of project for file tools
-
-# Blocked files/patterns for security
-BLOCKED_PATTERNS = ['.env', '*.key', '*.pem', '*secret*', '*credential*', '*password*']
 
 # คำสั่งภาษาอังกฤษ (Default)
 INSTRUCTIONS_EN = """You are an all-purpose AI assistant designed to help the user with any task, question, or problem across all topics and domains. Your role is to provide accurate, clear, thoughtful, and practical assistance at all times. Your answers should be polite, friendly, and easy to understand, while adapting the depth and complexity of explanations to suit the user's needs. You should strive to be helpful in areas such as learning, problem-solving, programming, writing, translation, planning, analysis, creativity, and general advice. If a request is unclear or lacks necessary information, you should ask for clarification in a respectful manner. When multiple approaches or solutions exist, present the most suitable one first and explain it clearly, while also mentioning alternatives when relevant. You must prioritize correctness, safety, and usefulness, avoid providing harmful, illegal, or misleading information, and remain neutral and supportive in all interactions. Your ultimate goal is to assist the user effectively, helping them understand concepts, overcome challenges, and achieve their goals with confidence and clarity."""
@@ -55,267 +60,68 @@ def get_instruction_by_language(language: str) -> str:
         return INSTRUCTIONS_EN
 
 
-# --- File Tool Functions for Gemini ---
-
-def is_path_safe(file_path: str) -> tuple[bool, str]:
-    """Check if a file path is safe to access"""
-    try:
-        # Resolve the full path
-        full_path = (PROJECT_ROOT / file_path).resolve()
-        
-        # Check if path is within project root
-        if not str(full_path).startswith(str(PROJECT_ROOT)):
-            return False, "Access denied: Path is outside project directory"
-        
-        # Check against blocked patterns
-        filename = full_path.name
-        for pattern in BLOCKED_PATTERNS:
-            if fnmatch.fnmatch(filename.lower(), pattern.lower()):
-                return False, f"Access denied: File matches blocked pattern '{pattern}'"
-        
-        return True, str(full_path)
-    except Exception as e:
-        return False, f"Invalid path: {e}"
-
+# --- Tool wrapper functions using mcplib ---
 
 def tool_read_file(file_path: str) -> dict:
-    """Read contents of a file from the project"""
-    safe, result = is_path_safe(file_path)
-    if not safe:
-        return {"error": result}
-    
-    full_path = Path(result)
-    if not full_path.exists():
-        return {"error": f"File not found: {file_path}"}
-    if not full_path.is_file():
-        return {"error": f"Not a file: {file_path}"}
-    
-    try:
-        # Limit file size to 100KB
-        if full_path.stat().st_size > 100 * 1024:
-            return {"error": "File too large (max 100KB)"}
-        
-        content = full_path.read_text(encoding='utf-8', errors='replace')
-        return {
-            "file_path": file_path,
-            "content": content,
-            "lines": len(content.splitlines()),
-            "size_bytes": len(content.encode('utf-8'))
-        }
-    except Exception as e:
-        return {"error": f"Failed to read file: {e}"}
-
+    """Read contents of a file using mcplib"""
+    if not MCPLIB_AVAILABLE:
+        return {"error": "mcplib not available"}
+    full_path = str((PROJECT_ROOT / file_path).resolve())
+    return read_file(full_path)
 
 def tool_list_files(directory: str = ".") -> dict:
-    """List files in a directory"""
-    safe, result = is_path_safe(directory)
-    if not safe:
-        return {"error": result}
-    
-    full_path = Path(result)
-    if not full_path.exists():
-        return {"error": f"Directory not found: {directory}"}
-    if not full_path.is_dir():
-        return {"error": f"Not a directory: {directory}"}
-    
-    try:
-        items = []
-        for item in sorted(full_path.iterdir()):
-            # Skip hidden files and blocked patterns
-            if item.name.startswith('.'):
-                continue
-            safe_item, _ = is_path_safe(str(item.relative_to(PROJECT_ROOT)))
-            if not safe_item:
-                continue
-            
-            item_type = "directory" if item.is_dir() else "file"
-            items.append({"name": item.name, "type": item_type})
-        
-        return {"directory": directory, "items": items, "count": len(items)}
-    except Exception as e:
-        return {"error": f"Failed to list directory: {e}"}
-
-
-def tool_search_files(pattern: str, directory: str = ".") -> dict:
-    """Search for files matching a pattern"""
-    safe, result = is_path_safe(directory)
-    if not safe:
-        return {"error": result}
-    
-    full_path = Path(result)
-    if not full_path.exists():
-        return {"error": f"Directory not found: {directory}"}
-    
-    try:
-        matches = []
-        for item in full_path.rglob(pattern):
-            # Skip if outside project or blocked
-            try:
-                rel_path = item.relative_to(PROJECT_ROOT)
-                safe_item, _ = is_path_safe(str(rel_path))
-                if safe_item and not any(part.startswith('.') for part in rel_path.parts):
-                    matches.append(str(rel_path))
-            except ValueError:
-                continue
-        
-        # Limit results
-        matches = matches[:50]
-        return {"pattern": pattern, "directory": directory, "matches": matches, "count": len(matches)}
-    except Exception as e:
-        return {"error": f"Failed to search files: {e}"}
-
+    """List files in a directory using mcplib"""
+    if not MCPLIB_AVAILABLE:
+        return {"error": "mcplib not available"}
+    full_path = str((PROJECT_ROOT / directory).resolve())
+    return list_files(full_path)
 
 def tool_create_file(file_path: str, content: str) -> dict:
-    """Create a new file with the given content"""
-    safe, result = is_path_safe(file_path)
-    if not safe:
-        return {"error": result}
-    
-    full_path = Path(result)
-    
-    # Don't allow overwriting existing files for safety
-    if full_path.exists():
-        return {"error": f"File already exists: {file_path}. Use a different name or delete it first."}
-    
-    try:
-        # Create parent directories if needed
-        full_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        # Write the file
-        full_path.write_text(content, encoding='utf-8')
-        
-        return {
-            "success": True,
-            "file_path": file_path,
-            "size_bytes": len(content.encode('utf-8')),
-            "lines": len(content.splitlines())
-        }
-    except Exception as e:
-        return {"error": f"Failed to create file: {e}"}
+    """Create a new file using mcplib"""
+    if not MCPLIB_AVAILABLE:
+        return {"error": "mcplib not available"}
+    full_path = str((PROJECT_ROOT / file_path).resolve())
+    return create_file(full_path, content)
 
+def tool_delete_file(file_path: str) -> dict:
+    """Delete a file using mcplib"""
+    if not MCPLIB_AVAILABLE:
+        return {"error": "mcplib not available"}
+    full_path = str((PROJECT_ROOT / file_path).resolve())
+    return delete_file(full_path)
 
 async def tool_browse_url(url: str) -> dict:
-    """Browse a URL and return the webpage content as text"""
-    # Validate URL
-    if not url.startswith(('http://', 'https://')):
-        return {"error": "Invalid URL: must start with http:// or https://"}
-    
-    try:
-        timeout = aiohttp.ClientTimeout(total=10)
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-        
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get(url, headers=headers, allow_redirects=True) as response:
-                if response.status != 200:
-                    return {"error": f"HTTP error {response.status}"}
-                
-                content_type = response.headers.get('Content-Type', '')
-                if 'text/html' not in content_type and 'text/plain' not in content_type:
-                    return {"error": f"Unsupported content type: {content_type}"}
-                
-                html = await response.text()
-                
-                # Strip HTML tags to get plain text
-                # Remove script and style elements
-                html = re.sub(r'<script[^>]*>.*?</script>', '', html, flags=re.DOTALL | re.IGNORECASE)
-                html = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
-                # Remove HTML tags
-                text = re.sub(r'<[^>]+>', ' ', html)
-                # Clean up whitespace
-                text = re.sub(r'\s+', ' ', text).strip()
-                # Decode HTML entities
-                text = text.replace('&nbsp;', ' ').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
-                
-                # Limit content size (max 50KB of text)
-                if len(text) > 50000:
-                    text = text[:50000] + "... [content truncated]"
-                
-                return {
-                    "url": url,
-                    "content": text,
-                    "length": len(text)
-                }
-    except aiohttp.ClientError as e:
-        return {"error": f"Connection error: {e}"}
-    except Exception as e:
-        return {"error": f"Failed to browse URL: {e}"}
-
+    """Browse a URL using mcplib"""
+    if not MCPLIB_AVAILABLE:
+        return {"error": "mcplib not available"}
+    return browse_web(url)
 
 async def tool_web_search(query: str, num_results: int = 5) -> dict:
-    """Search the web using DuckDuckGo and return results"""
-    if not query or len(query.strip()) == 0:
-        return {"error": "Search query cannot be empty"}
-    
-    # Limit results
-    num_results = min(max(1, num_results), 10)
-    
-    try:
-        # Use DuckDuckGo HTML search
-        search_url = f"https://html.duckduckgo.com/html/?q={query.replace(' ', '+')}"
-        
-        timeout = aiohttp.ClientTimeout(total=10)
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-        
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get(search_url, headers=headers) as response:
-                if response.status != 200:
-                    return {"error": f"Search failed with status {response.status}"}
-                
-                html = await response.text()
-                
-                # Parse results from DuckDuckGo HTML
-                results = []
-                
-                # Find result blocks - DuckDuckGo uses class="result"
-                result_pattern = r'<a rel="nofollow" class="result__a" href="([^"]+)"[^>]*>([^<]+)</a>'
-                snippet_pattern = r'<a class="result__snippet"[^>]*>([^<]+(?:<[^>]+>[^<]*</[^>]+>)*[^<]*)</a>'
-                
-                # Find all result links
-                links = re.findall(result_pattern, html)
-                snippets = re.findall(snippet_pattern, html)
-                
-                for i, (url, title) in enumerate(links[:num_results]):
-                    result = {
-                        "title": title.strip(),
-                        "url": url
-                    }
-                    if i < len(snippets):
-                        # Clean snippet of HTML tags
-                        snippet = re.sub(r'<[^>]+>', '', snippets[i])
-                        result["snippet"] = snippet.strip()
-                    results.append(result)
-                
-                if not results:
-                    return {"query": query, "results": [], "message": "No results found"}
-                
-                return {
-                    "query": query,
-                    "results": results,
-                    "count": len(results)
-                }
-                
-    except aiohttp.ClientError as e:
-        return {"error": f"Connection error: {e}"}
-    except Exception as e:
-        return {"error": f"Search failed: {e}"}
+    """Search the web using mcplib"""
+    if not MCPLIB_AVAILABLE:
+        return {"error": "mcplib not available"}
+    return search_web(query, num_results=num_results)
 
+async def tool_execute_command(command: str, cwd: str = None) -> dict:
+    """Execute a shell command using mcplib"""
+    if not MCPLIB_AVAILABLE:
+        return {"error": "mcplib not available"}
+    working_dir = cwd if cwd else str(PROJECT_ROOT)
+    return execute_command(command, cwd=working_dir, timeout=30)
 
 # Tool dispatch map (sync tools)
 TOOL_FUNCTIONS = {
     "read_file": tool_read_file,
     "list_files": tool_list_files,
-    "search_files": tool_search_files,
     "create_file": tool_create_file,
+    "delete_file": tool_delete_file,
 }
 
 # Async tool dispatch map
 ASYNC_TOOL_FUNCTIONS = {
     "browse_url": tool_browse_url,
     "web_search": tool_web_search,
+    "execute_command": tool_execute_command,
 }
 
 # Gemini Tool Definitions
@@ -349,26 +155,8 @@ FILE_TOOLS = types.Tool(
             )
         ),
         types.FunctionDeclaration(
-            name="search_files",
-            description="Search for files matching a glob pattern (e.g., '*.py', '**/*.json').",
-            parameters=types.Schema(
-                type=types.Type.OBJECT,
-                properties={
-                    "pattern": types.Schema(
-                        type=types.Type.STRING,
-                        description="Glob pattern to match files (e.g., '*.py', '**/*.md')"
-                    ),
-                    "directory": types.Schema(
-                        type=types.Type.STRING,
-                        description="Directory to search in (default: '.' for project root)"
-                    )
-                },
-                required=["pattern"]
-            )
-        ),
-        types.FunctionDeclaration(
             name="create_file",
-            description="Create a new file with the specified content. Cannot overwrite existing files.",
+            description="Create a new file with the specified content.",
             parameters=types.Schema(
                 type=types.Type.OBJECT,
                 properties={
@@ -382,6 +170,20 @@ FILE_TOOLS = types.Tool(
                     )
                 },
                 required=["file_path", "content"]
+            )
+        ),
+        types.FunctionDeclaration(
+            name="delete_file",
+            description="Delete a file from the project.",
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "file_path": types.Schema(
+                        type=types.Type.STRING,
+                        description="Relative path to the file to delete"
+                    )
+                },
+                required=["file_path"]
             )
         ),
         types.FunctionDeclaration(
@@ -414,6 +216,24 @@ FILE_TOOLS = types.Tool(
                     )
                 },
                 required=["query"]
+            )
+        ),
+        types.FunctionDeclaration(
+            name="execute_command",
+            description="Execute a shell command in the project directory. Use for running scripts, checking status, etc.",
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "command": types.Schema(
+                        type=types.Type.STRING,
+                        description="Shell command to execute (e.g., 'ls -la', 'python script.py')"
+                    ),
+                    "cwd": types.Schema(
+                        type=types.Type.STRING,
+                        description="Working directory for the command (optional, defaults to project root)"
+                    )
+                },
+                required=["command"]
             )
         ),
     ]
@@ -708,8 +528,7 @@ class AI(commands.Cog):
         question="คำถามที่คุณต้องการถาม",
         language="เลือกภาษาของคำสั่ง (Default: English)",
         custom_prompt="คำสั่งแบบกำหนดเอง (ถ้าต้องการ)",
-        model="รุ่นโมเดล",
-        use_tools="Enable file tools (read/list/search/create files)"
+        model="รุ่นโมเดล"
     )
     async def slash_ask(
         self,
@@ -717,8 +536,7 @@ class AI(commands.Cog):
         question: str,
         language: Literal["English", "Thai"] = "English",
         custom_prompt: str = None,
-        model: str = AIMODEL,
-        use_tools: bool = False
+        model: str = AIMODEL
     ):
         await interaction.response.defer()
 
@@ -732,10 +550,10 @@ class AI(commands.Cog):
             else:
                 final_prompt = get_instruction_by_language(language)
             
-            # Build config with optional tools
+            # Build config with tools enabled by default
             config = types.GenerateContentConfig(
                 system_instruction=final_prompt,
-                tools=[FILE_TOOLS] if use_tools else None
+                tools=[FILE_TOOLS]
             )
             
             # Initial request
@@ -802,8 +620,7 @@ class AI(commands.Cog):
             response_text = response.text if response.text else "No response generated."
 
             header = f"**Q:** {question}\n"
-            if use_tools:
-                header += "🔧 *File tools enabled*\n"
+            header += "🔧 *Tools enabled*\n"
                 
             if len(response_text) > 1900:
                 await interaction.followup.send(f"{header}**A:** (คำตอบยาวเกินไป กำลังส่งแยก...)")
