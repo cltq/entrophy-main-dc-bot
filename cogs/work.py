@@ -757,7 +757,7 @@ class WorkCog(commands.Cog):
         converted = convert_to_thai(text)
         await ctx.send(f"🔁 Converted text:\n{converted}")
 
-    @app_commands.command(name='qwerty_to_thai', description='Convert QWERTY text to Thai')
+    @app_commands.command(name='qtt', description='Convert QWERTY text to Thai')
     async def qwerty_to_thai_cmd_slash(self, interaction: discord.Interaction, text: str):
         converted = convert_to_thai(text)
         await interaction.response.send_message(f"🔁 Converted text:\n{converted}", ephemeral=True)
