@@ -5,7 +5,6 @@ from discord.ext import commands
 from utils.discord_logger import DiscordHandler
 from utils.log_buffer import BufferHandler
 from utils.advanced_logger import setup_advanced_logger, LogLevel, log_command_execution, log_error, log_event
-from dashboard.server import start_dashboard
 from dotenv import load_dotenv
 from typing import Literal, Optional
 try:
@@ -101,18 +100,6 @@ try:
             await original_setup()
         # Attach discord handler if configured
         await _attach_discord_handler_if_configured()
-
-        # Start dashboard server if requested (separate from Discord handler)
-        try:
-            if os.getenv('DASHBOARD_ENABLED', 'true').lower() in ('1', 'true', 'yes'):
-                host = os.getenv('DASHBOARD_HOST', '0.0.0.0')
-                # Prefer Render's $PORT if available
-                port = int(os.getenv('PORT') or os.getenv('DASHBOARD_PORT', '8080'))
-                # start in background; avoid blocking setup
-                bot.loop.create_task(start_dashboard(bot, host=host, port=port))
-                logger.info(f"Dashboard scheduled on {host}:{port}")
-        except Exception:
-            logger.exception('Failed to start dashboard')
 
     bot.setup_hook = combined_setup
 except Exception:
@@ -242,9 +229,7 @@ async def main():
 
 if __name__ == "__main__":
     # Start the optional keep-alive webserver if available and enabled via env
-    # Only start the Flask keep_alive if the aiohttp dashboard is NOT enabled.
-    dashboard_enabled = os.getenv('DASHBOARD_ENABLED', 'true').lower() in ('1', 'true', 'yes')
-    if keep_alive and os.getenv("KEEP_ALIVE", "false").lower() in ("1", "true", "yes") and not dashboard_enabled:
+    if keep_alive and os.getenv("KEEP_ALIVE", "false").lower() in ("1", "true", "yes"):
         try:
             keep_alive()
             logger.info("keep_alive enabled")

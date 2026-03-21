@@ -11,15 +11,6 @@ from typing import Literal
 from pathlib import Path
 import urllib.request
 
-# --- Load mcplib from Gitea ---
-MCPLIB_URL = 'http://asane.local:3002/fumi/SernaCore-MCPLibrary/raw/branch/main/mcplib.py'
-try:
-    exec(urllib.request.urlopen(MCPLIB_URL, timeout=10).read().decode('utf-8'))
-    MCPLIB_AVAILABLE = True
-except Exception as e:
-    print(f"⚠️ Warning: Could not load mcplib from {MCPLIB_URL}: {e}")
-    MCPLIB_AVAILABLE = False
-
 # --- การตั้งค่า Configuration (Global) ---
 # หมายเหตุ: ควรย้าย API Key ไปไว้ใน .env หรือ config หลักถ้าทำได้
 GEMINI_API_KEY = str(os.getenv("GEMINI_API_KEY")) # ใส่ API Key ของ Gemini ที่นี่
@@ -60,193 +51,7 @@ def get_instruction_by_language(language: str) -> str:
         return INSTRUCTIONS_EN
 
 
-# --- Tool wrapper functions using mcplib ---
 
-def tool_read_file(file_path: str) -> dict:
-    """Read contents of a file using mcplib"""
-    if not MCPLIB_AVAILABLE:
-        return {"error": "mcplib not available"}
-    full_path = str((PROJECT_ROOT / file_path).resolve())
-    return read_file(full_path)
-
-def tool_list_files(directory: str = ".") -> dict:
-    """List files in a directory using mcplib"""
-    if not MCPLIB_AVAILABLE:
-        return {"error": "mcplib not available"}
-    full_path = str((PROJECT_ROOT / directory).resolve())
-    return list_files(full_path)
-
-def tool_create_file(file_path: str, content: str) -> dict:
-    """Create a new file using mcplib"""
-    if not MCPLIB_AVAILABLE:
-        return {"error": "mcplib not available"}
-    full_path = str((PROJECT_ROOT / file_path).resolve())
-    return create_file(full_path, content)
-
-def tool_delete_file(file_path: str) -> dict:
-    """Delete a file using mcplib"""
-    if not MCPLIB_AVAILABLE:
-        return {"error": "mcplib not available"}
-    full_path = str((PROJECT_ROOT / file_path).resolve())
-    return delete_file(full_path)
-
-async def tool_browse_url(url: str) -> dict:
-    """Browse a URL using mcplib"""
-    if not MCPLIB_AVAILABLE:
-        return {"error": "mcplib not available"}
-    return browse_web(url)
-
-async def tool_web_search(query: str, num_results: int = 5) -> dict:
-    """Search the web using mcplib"""
-    if not MCPLIB_AVAILABLE:
-        return {"error": "mcplib not available"}
-    return search_web(query, num_results=num_results)
-
-async def tool_execute_command(command: str, cwd: str = None) -> dict:
-    """Execute a shell command using mcplib"""
-    if not MCPLIB_AVAILABLE:
-        return {"error": "mcplib not available"}
-    working_dir = cwd if cwd else str(PROJECT_ROOT)
-    return execute_command(command, cwd=working_dir, timeout=30)
-
-# Tool dispatch map (sync tools)
-TOOL_FUNCTIONS = {
-    "read_file": tool_read_file,
-    "list_files": tool_list_files,
-    "create_file": tool_create_file,
-    "delete_file": tool_delete_file,
-}
-
-# Async tool dispatch map
-ASYNC_TOOL_FUNCTIONS = {
-    "browse_url": tool_browse_url,
-    "web_search": tool_web_search,
-    "execute_command": tool_execute_command,
-}
-
-# Gemini Tool Definitions
-FILE_TOOLS = types.Tool(
-    function_declarations=[
-        types.FunctionDeclaration(
-            name="read_file",
-            description="Read the contents of a file from the project. Returns file content, line count, and size.",
-            parameters=types.Schema(
-                type=types.Type.OBJECT,
-                properties={
-                    "file_path": types.Schema(
-                        type=types.Type.STRING,
-                        description="Relative path to the file from project root (e.g., 'main.py' or 'cogs/ai.py')"
-                    )
-                },
-                required=["file_path"]
-            )
-        ),
-        types.FunctionDeclaration(
-            name="list_files",
-            description="List all files and directories in a given directory.",
-            parameters=types.Schema(
-                type=types.Type.OBJECT,
-                properties={
-                    "directory": types.Schema(
-                        type=types.Type.STRING,
-                        description="Relative path to directory (default: '.' for project root)"
-                    )
-                }
-            )
-        ),
-        types.FunctionDeclaration(
-            name="create_file",
-            description="Create a new file with the specified content.",
-            parameters=types.Schema(
-                type=types.Type.OBJECT,
-                properties={
-                    "file_path": types.Schema(
-                        type=types.Type.STRING,
-                        description="Relative path for the new file (e.g., 'scripts/hello.py')"
-                    ),
-                    "content": types.Schema(
-                        type=types.Type.STRING,
-                        description="Content to write to the file"
-                    )
-                },
-                required=["file_path", "content"]
-            )
-        ),
-        types.FunctionDeclaration(
-            name="delete_file",
-            description="Delete a file from the project.",
-            parameters=types.Schema(
-                type=types.Type.OBJECT,
-                properties={
-                    "file_path": types.Schema(
-                        type=types.Type.STRING,
-                        description="Relative path to the file to delete"
-                    )
-                },
-                required=["file_path"]
-            )
-        ),
-        types.FunctionDeclaration(
-            name="browse_url",
-            description="Browse a webpage and return its text content. Use this to access external websites, documentation, or any URL.",
-            parameters=types.Schema(
-                type=types.Type.OBJECT,
-                properties={
-                    "url": types.Schema(
-                        type=types.Type.STRING,
-                        description="Full URL to browse (must start with http:// or https://)"
-                    )
-                },
-                required=["url"]
-            )
-        ),
-        types.FunctionDeclaration(
-            name="web_search",
-            description="Search the web for information using DuckDuckGo. Returns titles, URLs, and snippets of matching results.",
-            parameters=types.Schema(
-                type=types.Type.OBJECT,
-                properties={
-                    "query": types.Schema(
-                        type=types.Type.STRING,
-                        description="Search query (e.g., 'Python async tutorial', 'latest news about AI')"
-                    ),
-                    "num_results": types.Schema(
-                        type=types.Type.INTEGER,
-                        description="Number of results to return (1-10, default: 5)"
-                    )
-                },
-                required=["query"]
-            )
-        ),
-        types.FunctionDeclaration(
-            name="execute_command",
-            description="Execute a shell command in the project directory. Use for running scripts, checking status, etc.",
-            parameters=types.Schema(
-                type=types.Type.OBJECT,
-                properties={
-                    "command": types.Schema(
-                        type=types.Type.STRING,
-                        description="Shell command to execute (e.g., 'ls -la', 'python script.py')"
-                    ),
-                    "cwd": types.Schema(
-                        type=types.Type.STRING,
-                        description="Working directory for the command (optional, defaults to project root)"
-                    )
-                },
-                required=["command"]
-            )
-        ),
-    ]
-)
-
-
-async def execute_tool_call(tool_name: str, tool_args: dict) -> dict:
-    """Execute a tool call and return the result (handles both sync and async tools)"""
-    if tool_name in TOOL_FUNCTIONS:
-        return TOOL_FUNCTIONS[tool_name](**tool_args)
-    if tool_name in ASYNC_TOOL_FUNCTIONS:
-        return await ASYNC_TOOL_FUNCTIONS[tool_name](**tool_args)
-    return {"error": f"Unknown tool: {tool_name}"}
 
 class AI(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -550,82 +355,20 @@ class AI(commands.Cog):
             else:
                 final_prompt = get_instruction_by_language(language)
             
-            # Build config with tools enabled by default
-            config = types.GenerateContentConfig(
-                system_instruction=final_prompt,
-                tools=[FILE_TOOLS]
-            )
-            
-            # Initial request
-            contents = [types.Content(role="user", parts=[types.Part(text=question)])]
-            
+            # Build config without external tool integrations
             response = self.client.models.generate_content(
                 model=model,
-                contents=contents,
-                config=config
+                contents=[types.Content(role="user", parts=[types.Part(text=question)])],
+                config=types.GenerateContentConfig(system_instruction=final_prompt)
             )
-            
-            # Handle function calling loop (max 5 iterations)
-            max_iterations = 5
-            iteration = 0
-            
-            while iteration < max_iterations:
-                # Check if response has function calls
-                if not response.candidates or not response.candidates[0].content.parts:
-                    break
-                    
-                function_calls = [
-                    part.function_call 
-                    for part in response.candidates[0].content.parts 
-                    if hasattr(part, 'function_call') and part.function_call
-                ]
-                
-                if not function_calls:
-                    break  # No more function calls, we have the final response
-                
-                # Add assistant response to conversation
-                contents.append(response.candidates[0].content)
-                
-                # Execute each function call and collect results
-                function_responses = []
-                for fc in function_calls:
-                    tool_name = fc.name
-                    tool_args = dict(fc.args) if fc.args else {}
-                    
-                    # Execute the tool
-                    result = await execute_tool_call(tool_name, tool_args)
-                    
-                    function_responses.append(
-                        types.Part(
-                            function_response=types.FunctionResponse(
-                                name=tool_name,
-                                response=result
-                            )
-                        )
-                    )
-                
-                # Add function responses to conversation
-                contents.append(types.Content(role="user", parts=function_responses))
-                
-                # Get next response
-                response = self.client.models.generate_content(
-                    model=model,
-                    contents=contents,
-                    config=config
-                )
-                
-                iteration += 1
-            
-            # Extract final text response
-            response_text = response.text if response.text else "No response generated."
 
+            response_text = response.text if response.text else "No response generated."
             header = f"**Q:** {question}\n"
-            header += "🔧 *Tools enabled*\n"
-                
+
             if len(response_text) > 1900:
                 await interaction.followup.send(f"{header}**A:** (คำตอบยาวเกินไป กำลังส่งแยก...)")
                 for i in range(0, len(response_text), 2000):
-                    await interaction.channel.send(response_text[i:i+2000])
+                    await interaction.followup.send(response_text[i:i+2000])
             else:
                 await interaction.followup.send(f"{header}**A:** {response_text}")
 

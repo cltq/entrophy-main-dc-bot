@@ -11,8 +11,77 @@ from typing import Optional, List
 # Data file path for persisting todos and notes
 DATA_FILE = "data/user_data.json"
 
+# Per-guild toggle config for QWERTY->Thai autocorrect
+THAI_LAYOUT_CONFIG_FILE = "data/guild_thai_layout_config.json"
+
 # Temporary note codes storage: {user_id: {"code": "ABC123", "expires_at": datetime}}
 TEMP_NOTE_CODES = {}
+
+QWERTY_TO_THAI_MAP = {
+    'q': 'ๆ', 'w': 'ไ', 'e': 'ำ', 'r': 'พ', 't': 'ะ', 'y': 'า', 'u': 'ส', 'i': 'ด', 'o': 'ฟ', 'p': 'ก', '[': 'ฮ', ']': 'ฺ',
+    'a': 'ฤ', 's': 'ฆ', 'd': 'ฏ', 'f': 'โ', 'g': 'ฌ', 'h': '็', 'j': '๋', 'k': 'ษ', 'l': 'ศ', ';': 'ซ', "'": 'ฅ',
+    'z': 'ผ', 'x': 'ป', 'c': 'ฉ', 'v': 'ฮ', 'b': 'ิ', 'n': 'ื', 'm': 'ท', ',': 'ม', '.': 'ใ', '/': 'ฝ',
+    '1': '๑', '2': '๒', '3': '๓', '4': '๔', '5': '๕', '6': '๖', '7': '๗', '8': '๘', '9': '๙', '0': '๐'
+}
+
+
+def qwerty_to_thai_text(text: str) -> str:
+    """Convert a string typed on QWERTY to Thai keyboard characters."""
+    result_chars = []
+    for char in text:
+        lower = char.lower()
+        if lower in QWERTY_TO_THAI_MAP:
+            thai_char = QWERTY_TO_THAI_MAP[lower]
+            result_chars.append(thai_char)
+        else:
+            result_chars.append(char)
+    return ''.join(result_chars)
+
+
+def convert_to_thai(text: str) -> str:
+    """Alias for QWERTY->Thai conversion."""
+    return qwerty_to_thai_text(text)
+
+
+def load_thai_layout_config():
+    os.makedirs('data', exist_ok=True)
+    if not os.path.exists(THAI_LAYOUT_CONFIG_FILE):
+        return {}
+    try:
+        with open(THAI_LAYOUT_CONFIG_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def save_thai_layout_config(data):
+    os.makedirs('data', exist_ok=True)
+    with open(THAI_LAYOUT_CONFIG_FILE, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def is_likely_mistyped_thai(text: str) -> bool:
+    if not text or len(text.strip()) < 2:
+        return False
+
+    if re.search('[\u0E00-\u0E7F]', text):
+        return False
+
+    mappable = sum(1 for c in text if c in QWERTY_TO_THAI_MAP)
+    total = sum(1 for c in text if c.isalnum() or c in "[]{};:'\",.<>/?`~!@#$%^&*()-_=+")
+    if total == 0:
+        return False
+
+    ratio = mappable / total
+    words = [w for w in re.split(r'\s+', text.strip()) if w]
+
+    if ratio >= 0.55 and len(words) > 1:
+        return True
+    if ratio >= 0.70 and len(text) >= 4:
+        return True
+
+    return False
+
 
 class TodoListView(discord.ui.View):
     """Interactive view for todo list management"""
@@ -629,12 +698,70 @@ def create_todo_embed(todos: List[dict], user_id: int) -> discord.Embed:
 
 
 class WorkCog(commands.Cog):
-    """Todo list and note-taking commands"""
+    """Todo list and note-taking commands + QWERTY->Thai autocorrect"""
     
     def __init__(self, bot):
         self.bot = bot
         self.cleanup_expired_codes.start()
-    
+        self.layout_config = load_thai_layout_config()
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if message.author.bot:
+            return
+
+        await self.bot.process_commands(message)
+
+        if not message.content or not message.content.strip():
+            return
+
+        guild_id = str(message.guild.id) if message.guild else 'dm'
+        if not self.layout_config.get(guild_id, True):
+            return
+
+        if not is_likely_mistyped_thai(message.content):
+            return
+
+        corrected = convert_to_thai(message.content)
+        if corrected == message.content:
+            return
+
+        if message.guild and message.channel.permissions_for(message.guild.me).manage_messages:
+            try:
+                await message.edit(content=corrected)
+                await message.channel.send(f"✍️ {message.author.mention}, ปรับข้อความของคุณเป็นไทยเรียบร้อยแล้ว")
+                return
+            except Exception:
+                pass
+
+        await message.reply(f"🔁 ดูเหมือนคุณพิมพ์คีย์บอร์ดผิด ลองดูข้อความที่แก้ไขแล้ว:\n{corrected}", mention_author=False)
+
+    @commands.command(name='thai_layout_toggle')
+    @commands.has_permissions(administrator=True)
+    async def thai_layout_toggle(self, ctx: commands.Context, enabled: bool):
+        guild_id = str(ctx.guild.id) if ctx.guild else 'dm'
+        self.layout_config[guild_id] = enabled
+        save_thai_layout_config(self.layout_config)
+        await ctx.send(f"✅ QWERTY->Thai autocorrect is now {'enabled' if enabled else 'disabled'}.")
+
+    @app_commands.command(name='thai_layout_toggle', description='Enable/disable QWERTY->Thai autocorrection')
+    @app_commands.checks.has_permissions(administrator=True)
+    async def thai_layout_toggle_slash(self, interaction: discord.Interaction, enabled: bool):
+        guild_id = str(interaction.guild.id) if interaction.guild else 'dm'
+        self.layout_config[guild_id] = enabled
+        save_thai_layout_config(self.layout_config)
+        await interaction.response.send_message(f"✅ QWERTY->Thai autocorrect is now {'enabled' if enabled else 'disabled'}.", ephemeral=True)
+
+    @commands.command(name='qwerty_to_thai')
+    async def qwerty_to_thai_cmd(self, ctx: commands.Context, *, text: str):
+        converted = convert_to_thai(text)
+        await ctx.send(f"🔁 Converted text:\n{converted}")
+
+    @app_commands.command(name='qwerty_to_thai', description='Convert QWERTY text to Thai')
+    async def qwerty_to_thai_cmd_slash(self, interaction: discord.Interaction, text: str):
+        converted = convert_to_thai(text)
+        await interaction.response.send_message(f"🔁 Converted text:\n{converted}", ephemeral=True)
+
     @tasks.loop(minutes=1)
     async def cleanup_expired_codes(self):
         """Periodically clean up expired temporary codes"""
@@ -882,6 +1009,23 @@ class WorkCog(commands.Cog):
         embed = create_todo_embed(todos, user_id)
         view = TodoListView(user_id, todos, interaction)
         await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+
+    @app_commands.command(name="qwerty_to_thai", description="Convert QWERTY keyboard characters to Thai script")
+    @discord.app_commands.allowed_installs(guilds=True, users=True)
+    @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+    @app_commands.describe(text="Input text in QWERTY that should be mapped as if typed with Thai keyboard")
+    async def qwerty_to_thai(self, interaction: discord.Interaction, text: str):
+        """Convert QWERTY keyboard input into Thai characters and send result."""
+        await interaction.response.defer(ephemeral=True)
+
+        converted = qwerty_to_thai_text(text)
+
+        embed = discord.Embed(
+            title="🔤 QWERTY -> Thai",
+            description=f"**Input:** {text}\n**Output:** {converted}",
+            color=discord.Color.teal()
+        )
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
 
 async def setup(bot):
