@@ -1,4 +1,6 @@
 discord
+davey
+pynacl
 pytz
 flask
 dotenv
@@ -10,3 +12,5 @@ mcp
 beautifulsoup4
 requests
 html2text
+gtts
+ffmpeg

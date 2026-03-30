@@ -16,6 +16,9 @@ class Say(commands.Cog):
             await interaction.response.send_message("Amount must be between 1 and 100.", ephemeral=True)
             return
 
+        # Build the full message with sender attribution
+        full_message = f"<@{interaction.user.id}> --> {message}"
+
         # If a target channel_id was provided, try to send there (validate first)
         if channel_id:
             try:
@@ -35,12 +38,11 @@ class Say(commands.Cog):
                 await interaction.response.send_message("Could not find a sendable channel with that ID.", ephemeral=True)
                 return
 
-            # Try to send to the target channel
             await interaction.response.send_message(f":white_check_mark: Message queued to target channel ({amount}x).", ephemeral=True)
 
             try:
                 for _ in range(amount):
-                    await target.send(message, allowed_mentions=discord.AllowedMentions.none())
+                    await target.send(full_message, allowed_mentions=discord.AllowedMentions.none())
             except Exception:
                 try:
                     await interaction.followup.send("Failed to send to target channel (missing permissions?).", ephemeral=True)
@@ -50,42 +52,33 @@ class Say(commands.Cog):
 
         # If the command is used in DM
         if isinstance(interaction.channel, discord.DMChannel):
-            # Send normal (non-ephemeral) success message
             await interaction.response.send_message(":white_check_mark: Message sent Successfully.", ephemeral=True)
-            # Then send the message in the DM as a follow-up (no mentions)
             try:
                 for _ in range(amount):
-                    await interaction.followup.send(message, allowed_mentions=discord.AllowedMentions.none())
+                    await interaction.followup.send(full_message, allowed_mentions=discord.AllowedMentions.none())
             except Exception:
-                # Fallback: try sending directly to the channel
                 try:
                     for _ in range(amount):
-                        await interaction.channel.send(message, allowed_mentions=discord.AllowedMentions.none())
+                        await interaction.channel.send(full_message, allowed_mentions=discord.AllowedMentions.none())
                 except Exception:
-                    # If all fails, silently ignore to avoid crashing the cog load
                     pass
             return
 
         # If the command is in a guild (server)
-        # Step 1: ephemeral response to user
         await interaction.response.send_message("Success!", ephemeral=True)
 
-        # Step 2: send public message as a follow-up to the interaction (no mentions)
         try:
             for _ in range(amount):
-                await interaction.followup.send(message, allowed_mentions=discord.AllowedMentions.none())
+                await interaction.followup.send(full_message, allowed_mentions=discord.AllowedMentions.none())
         except Exception:
-            # Fallback to channel send if followup fails
             try:
                 for _ in range(amount):
-                    await interaction.channel.send(message, allowed_mentions=discord.AllowedMentions.none())
+                    await interaction.channel.send(full_message, allowed_mentions=discord.AllowedMentions.none())
             except Exception:
-                # Give the user an ephemeral error message if possible
                 try:
                     await interaction.followup.send("Failed to post message (missing permissions?)", ephemeral=True)
                 except Exception:
                     pass
-
 
 
 async def setup(bot):
