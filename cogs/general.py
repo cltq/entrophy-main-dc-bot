@@ -218,8 +218,8 @@ class General(commands.Cog):
     async def slash_ping(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_message(f"Pong! 🏓 `{round(self.bot.latency*1000)}ms`")
 
-    @discord.app_commands.command(name="bot", description="Bot control panel")
-    async def bot_info(self, interaction: discord.Interaction) -> None:
+    @discord.app_commands.command(name="bot-control", description="Bot control panel")
+    async def control_panel(self, interaction: discord.Interaction) -> None:
         owner_id = int(os.getenv("BOT_OWNER_ID", 0))
         is_owner = interaction.user.id == owner_id
 
