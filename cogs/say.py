@@ -1,16 +1,19 @@
+from typing import Optional
+
 import discord
 from discord import app_commands
 from discord.ext import commands
 
+
 class Say(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
+    def __init__(self, bot: commands.Bot) -> None:
+        self.bot: commands.Bot = bot
 
     @discord.app_commands.command(name="say", description="Say something anywhere.")
     @app_commands.describe(message="The message the bot will send publicly.", channel_id="Optional channel ID to send the message to", amount="Number of times to send the message (default: 1)")
     @discord.app_commands.allowed_installs(guilds=True, users=True)
     @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
-    async def say(self, interaction: discord.Interaction, message: str, channel_id: str = None, amount: int = 1):
+    async def say(self, interaction: discord.Interaction, message: str, channel_id: Optional[str] = None, amount: int = 1) -> None:
         # Validate amount
         if amount < 1 or amount > 100:
             await interaction.response.send_message("Amount must be between 1 and 100.", ephemeral=True)
