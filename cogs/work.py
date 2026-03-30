@@ -1,23 +1,20 @@
-import discord
-from discord.ext import commands, tasks
-from discord import app_commands
 import json
 import os
 import random
+import re
 import string
 from datetime import datetime, timedelta
-from typing import Optional, List
+from typing import Any, Optional, Sequence
 
-# Data file path for persisting todos and notes
-DATA_FILE = "data/user_data.json"
+import discord
+from discord import app_commands
+from discord.ext import commands, tasks
 
-# Per-guild toggle config for QWERTY->Thai autocorrect
-THAI_LAYOUT_CONFIG_FILE = "data/guild_thai_layout_config.json"
+DATA_FILE: str = "data/user_data.json"
+THAI_LAYOUT_CONFIG_FILE: str = "data/guild_thai_layout_config.json"
+TEMP_NOTE_CODES: dict[int, dict[str, Any]] = {}
 
-# Temporary note codes storage: {user_id: {"code": "ABC123", "expires_at": datetime}}
-TEMP_NOTE_CODES = {}
-
-QWERTY_TO_THAI_MAP = {
+QWERTY_TO_THAI_MAP: dict[str, str] = {
     'q': 'ๆ', 'w': 'ไ', 'e': 'ำ', 'r': 'พ', 't': 'ะ', 'y': 'า', 'u': 'ส', 'i': 'ด', 'o': 'ฟ', 'p': 'ก', '[': 'ฮ', ']': 'ฺ',
     'a': 'ฤ', 's': 'ฆ', 'd': 'ฏ', 'f': 'โ', 'g': 'ฌ', 'h': '็', 'j': '๋', 'k': 'ษ', 'l': 'ศ', ';': 'ซ', "'": 'ฅ',
     'z': 'ผ', 'x': 'ป', 'c': 'ฉ', 'v': 'ฮ', 'b': 'ิ', 'n': 'ื', 'm': 'ท', ',': 'ม', '.': 'ใ', '/': 'ฝ',
@@ -85,7 +82,7 @@ def is_likely_mistyped_thai(text: str) -> bool:
 
 class TodoListView(discord.ui.View):
     """Interactive view for todo list management"""
-    def __init__(self, user_id: int, todos: List[dict], context):
+    def __init__(self, user_id: int, todos: list[dict], context: Any) -> None:
         super().__init__(timeout=300)
         self.user_id = user_id
         self.todos = todos
@@ -196,7 +193,7 @@ class TodoListView(discord.ui.View):
 
 class NotesView(discord.ui.View):
     """Interactive view for notes management"""
-    def __init__(self, user_id: int, notes: List[dict], context):
+    def __init__(self, user_id: int, notes: list[dict], context: Any) -> None:
         super().__init__(timeout=300)
         self.user_id = user_id
         self.notes = notes
@@ -645,7 +642,7 @@ def load_user_data(user_id: int, notes: bool = False):
         return []
 
 
-def save_user_data(user_id: int, data: List[dict], notes: bool = False):
+def save_user_data(user_id: int, data: list[dict], notes: bool = False) -> None:
     """Save user todos or notes to JSON file"""
     ensure_data_dir()
     
@@ -670,7 +667,7 @@ def save_user_data(user_id: int, data: List[dict], notes: bool = False):
         json.dump(all_data, f, indent=2)
 
 
-def create_todo_embed(todos: List[dict], user_id: int) -> discord.Embed:
+def create_todo_embed(todos: list[dict], user_id: int) -> discord.Embed:
     """Create an embed displaying todos"""
     embed = discord.Embed(
         title="📋 Your Todo List",
