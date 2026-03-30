@@ -141,11 +141,6 @@ class Utility(commands.Cog):
         embed.set_footer(text=f"Requested by {requester}", icon_url=requester.display_avatar.url)
         return embed
 
-    @discord.app_commands.command(name="dashboard", description="Send the Bot's Dashboard link")
-    @discord.app_commands.allowed_installs(guilds=True, users=True)
-    @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
-    async def dashboard(self, interaction: discord.Interaction):
-        await interaction.response.send_message("⏱️ Bot Dashboard: https://entrophy-main-dc-bot.onrender.com")
 
 
 async def setup(bot):
