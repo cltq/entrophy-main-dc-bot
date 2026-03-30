@@ -1,22 +1,24 @@
-import discord
-from discord.ext import commands
-import json
-import datetime
 import asyncio
+import datetime
+import json
 import os
 import sys
+from typing import Any
+
+import discord
+from discord.ext import commands
 
 from utils.helpers import BANGKOK_TZ
 
-RESTART_INFO_FILE = "restart_info.json"
+RESTART_INFO_FILE: str = "restart_info.json"
 
 
 class Admin(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
+    def __init__(self, bot: commands.Bot) -> None:
+        self.bot: commands.Bot = bot
 
-    def is_admin_or_owner():
-        async def predicate(ctx):
+    def is_admin_or_owner() -> Any:
+        async def predicate(ctx: commands.Context) -> bool:
             if await ctx.bot.is_owner(ctx.author):
                 return True
             if ctx.guild:
@@ -28,7 +30,7 @@ class Admin(commands.Cog):
 
     @commands.command()
     @is_admin_or_owner()
-    async def restart(self, ctx):
+    async def restart(self, ctx: commands.Context) -> None:
         restart_meta = {
             "requested_by_id": ctx.author.id,
             "requested_by_name": str(ctx.author),
@@ -54,5 +56,5 @@ class Admin(commands.Cog):
         os.execv(sys.executable, ["python"] + sys.argv)
 
 
-async def setup(bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Admin(bot))
