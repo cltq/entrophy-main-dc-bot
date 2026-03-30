@@ -1,10 +1,12 @@
 from datetime import datetime, timezone
+from typing import Optional
+
 import pytz
 
 BANGKOK_TZ = pytz.timezone("Asia/Bangkok")
 
 
-def get_uptime(launch_time):
+def get_uptime(launch_time: Optional[datetime]) -> str:
     if not launch_time:
         return "Unknown"
     delta = datetime.now(timezone.utc) - launch_time
@@ -13,17 +15,17 @@ def get_uptime(launch_time):
     return f"{hours}h {minutes}m {seconds}s"
 
 
-def get_bangkok_time():
+def get_bangkok_time() -> datetime:
     return datetime.now(BANGKOK_TZ)
 
 
-def format_bangkok_time(dt=None):
+def format_bangkok_time(dt: Optional[datetime] = None) -> str:
     if dt is None:
         dt = datetime.now(BANGKOK_TZ)
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 
-def format_timestamp(dt, style="F"):
+def format_timestamp(dt: datetime, style: str = "F") -> str:
     from discord import utils
     return utils.format_dt(dt, style=style)
 
