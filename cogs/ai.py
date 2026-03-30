@@ -1,54 +1,46 @@
+import json
+import os
+from pathlib import Path
+from typing import Any, Optional, Literal
+
 import discord
 from discord import app_commands
 from discord.ext import commands
 import google.genai as genai
 from google.genai import types
-import json
-import os
-import aiohttp
-import re
-from typing import Literal
-from pathlib import Path
-import urllib.request
 
-# --- การตั้งค่า Configuration (Global) ---
-# หมายเหตุ: ควรย้าย API Key ไปไว้ใน .env หรือ config หลักถ้าทำได้
-GEMINI_API_KEY = str(os.getenv("GEMINI_API_KEY")) # ใส่ API Key ของ Gemini ที่นี่
-AIMODEL = 'gemini-2.5-flash'  # ตั้งค่าโมเดลเริ่มต้น
-CONFIG_FILE = './config/ai_channel_config.json'
-PROJECT_ROOT = Path(__file__).parent.parent.resolve()  # Root of project for file tools
+GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+AIMODEL: str = "gemini-2.5-flash"
+CONFIG_FILE: str = "./config/ai_channel_config.json"
+PROJECT_ROOT: Path = Path(__file__).parent.parent.resolve()
 
-# คำสั่งภาษาอังกฤษ (Default)
-INSTRUCTIONS_EN = """You are an all-purpose AI assistant designed to help the user with any task, question, or problem across all topics and domains. Your role is to provide accurate, clear, thoughtful, and practical assistance at all times. Your answers should be polite, friendly, and easy to understand, while adapting the depth and complexity of explanations to suit the user's needs. You should strive to be helpful in areas such as learning, problem-solving, programming, writing, translation, planning, analysis, creativity, and general advice. If a request is unclear or lacks necessary information, you should ask for clarification in a respectful manner. When multiple approaches or solutions exist, present the most suitable one first and explain it clearly, while also mentioning alternatives when relevant. You must prioritize correctness, safety, and usefulness, avoid providing harmful, illegal, or misleading information, and remain neutral and supportive in all interactions. Your ultimate goal is to assist the user effectively, helping them understand concepts, overcome challenges, and achieve their goals with confidence and clarity. Also should do some short answers too."""
+INSTRUCTIONS_EN: str = """You are an all-purpose AI assistant designed to help the user with any task, question, or problem across all topics and domains. Your role is to provide accurate, clear, thoughtful, and practical assistance at all times. Your answers should be polite, friendly, and easy to understand, while adapting the depth and complexity of explanations to suit the user's needs. You should strive to be helpful in areas such as learning, problem-solving, programming, writing, translation, planning, analysis, creativity, and general advice. If a request is unclear or lacks necessary information, you should ask for clarification in a respectful manner. When multiple approaches or solutions exist, present the most suitable one first and explain it clearly, while also mentioning alternatives when relevant. You must prioritize correctness, safety, and usefulness, avoid providing harmful, illegal, or misleading information, and remain neutral and supportive in all interactions. Your ultimate goal is to assist the user effectively, helping them understand concepts, overcome challenges, and achieve their goals with confidence and clarity. Also should do some short answers too."""
 
-# คำสั่งภาษาไทย
-INSTRUCTIONS_TH = """คุณคือผู้ช่วย AI อเนกประสงค์ที่ออกแบบมาเพื่อช่วยเหลือผู้ใช้ในงาน คำถาม หรือปัญหาใดๆ ในทุกหัวข้อและสาขา บทบาทของคุณคือให้ความช่วยเหลือที่แม่นยำ ชัดเจน รอบคอบ และใช้งานได้จริงตลอดเวลา คุณต้องตอบกลับเป็นภาษาไทยเท่านั้น ไม่ว่าผู้ใช้จะใช้ภาษาใดก็ตาม คำตอบของคุณควรสุภาพ เป็นมิตร และเข้าใจง่าย พร้อมปรับความลึกและความซับซ้อนของคำอธิบายให้เหมาะกับความต้องการของผู้ใช้ คุณควรพยายามช่วยเหลือในด้านต่างๆ เช่น การเรียนรู้ การแก้ปัญหา การเขียนโปรแกรม การเขียน การแปล การวางแผน การวิเคราะห์ ความคิดสร้างสรรค์ และคำแนะนำทั่วไป หากคำขอไม่ชัดเจนหรือขาดข้อมูลที่จำเป็น คุณควรขอคำชี้แจงอย่างสุภาพ เมื่อมีแนวทางหรือวิธีแก้ปัญหาหลายวิธี ให้นำเสนอวิธีที่เหมาะสมที่สุดก่อนและอธิบายอย่างชัดเจน พร้อมกล่าวถึงทางเลือกอื่นเมื่อเกี่ยวข้อง คุณต้องให้ความสำคัญกับความถูกต้อง ความปลอดภัย และความเป็นประโยชน์ หลีกเลี่ยงการให้ข้อมูลที่เป็นอันตราย ผิดกฎหมาย หรือทำให้เข้าใจผิด และรักษาความเป็นกลางและให้การสนับสนุนในทุกการโต้ตอบ เป้าหมายสูงสุดของคุณคือช่วยเหลือผู้ใช้อย่างมีประสิทธิภาพ ช่วยให้พวกเขาเข้าใจแนวคิด เอาชนะความท้าทาย และบรรลุเป้าหมายด้วยความมั่นใจและความชัดเจนและให้คำตอบสั้นๆแต่เข้าใจได้"""
+INSTRUCTIONS_TH: str = """คุณคือผู้ช่วย AI อเนกประสงค์ที่ออกแบบมาเพื่อช่วยเหลือผู้ใช้ในงาน คำถาม หรือปัญหาใดๆ ในทุกหัวข้อและสาขา บทบาทของคุณคือให้ความช่วยเหลือที่แม่นยำ ชัดเจน รอบคอบ และใช้งานได้จริงตลอดเวลา คุณต้องตอบกลับเป็นภาษาไทยเท่านั้น ไม่ว่าผู้ใช้จะใช้ภาษาใดก็ตาม คำตอบของคุณควรสุภาพ เป็นมิตร และเข้าใจง่าย พร้อมปรับความลึกและความซับซ้อนของคำอธิบายให้เหมาะกับความต้องการของผู้ใช้ คุณควรพยายามช่วยเหลือในด้านต่างๆ เช่น การเรียนรู้ การแก้ปัญหา การเขียนโปรแกรม การเขียน การแปล การวางแผน การวิเคราะห์ ความคิดสร้างสรรค์ และคำแนะนำทั่วไป หากคำขอไม่ชัดเจนหรือขาดข้อมูลที่จำเป็น คุณควรขอคำชี้แจงอย่างสุภาพ เมื่อมีแนวทางหรือวิธีแก้ปัญหาหลายวิธี ให้นำเสนอวิธีที่เหมาะสมที่สุดก่อนและอธิบายอย่างชัดเจน พร้อมกล่าวถึงทางเลือกอื่นเมื่อเกี่ยวข้อง คุณต้องให้ความสำคัญกับความถูกต้อง ความปลอดภัย และความเป็นประโยชน์ หลีกเลี่ยงการให้ข้อมูลที่เป็นอันตราย ผิดกฎหมาย หรือทำให้เข้าใจผิด และรักษาความเป็นกลางและให้การสนับสนุนในทุกการโต้ตอบ เป้าหมายสูงสุดของคุณคือช่วยเหลือผู้ใช้อย่างมีประสิทธิภาพ ช่วยให้พวกเขาเข้าใจแนวคิด เอาชนะความท้าทาย และบรรลุเป้าหมายด้วยความมั่นใจและความชัดเจนและให้คำตอบสั้นๆแต่เข้าใจได้"""
 
-# --- Helper Functions ---
-def load_config():
-    """โหลดไฟล์ Config"""
+
+def load_config() -> dict[str, Any]:
     if not os.path.exists(CONFIG_FILE):
         return {"channels": {}}
     try:
-        with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
             if "channels" not in data:
                 return {"channels": {}}
             return data
-    except:
+    except Exception:
         return {"channels": {}}
 
-def save_config(data):
-    """บันทึกไฟล์ Config"""
-    with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+
+def save_config(data: dict[str, Any]) -> None:
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
+
 def get_instruction_by_language(language: str) -> str:
-    """ดึงคำสั่งตามภาษาที่เลือก"""
     if language.lower() == "thai":
         return INSTRUCTIONS_TH
-    else:  # default to english
-        return INSTRUCTIONS_EN
+    return INSTRUCTIONS_EN
 
 
 
@@ -90,13 +82,12 @@ class AI(commands.Cog):
                     channel_config = config["channels"][channel_id]
                     system_prompt = channel_config.get("prompt", INSTRUCTIONS_EN)
                     
-                    # สร้าง Model Object และเรียกใช้งาน
                     response = self.client.models.generate_content(
                         model=AIMODEL,
                         contents=message.content,
                         config={"system_instruction": system_prompt}
                     )
-                    response_text = response.text
+                    response_text: str = response.text or ""
                     
                     if len(response_text) > 2000:
                         for i in range(0, len(response_text), 2000):
@@ -109,8 +100,8 @@ class AI(commands.Cog):
     # --- Prefix Commands ---
 
     @commands.command(name="aisetup")
-    async def prefix_setup(self, ctx: commands.Context, language: str = "English", *, custom_prompt: str = None):
-        """ตั้งค่าห้องแชทและบุคลิกบอท (Prefix)"""
+    async def prefix_setup(self, ctx: commands.Context, language: str = "English", *, custom_prompt: Optional[str] = None):
+        """Setup AI channel and personality (Prefix)"""
         if not ctx.guild:
             await ctx.send("คำสั่งนี้ใช้ได้เฉพาะใน Server เท่านั้น")
             return
@@ -226,7 +217,7 @@ class AI(commands.Cog):
                     contents=question,
                     config={"system_instruction": final_prompt}
                 )
-                response_text = response.text
+                response_text: str = response.text or ""
 
                 header = f"**Q:** {question}\n"
                     
@@ -251,7 +242,7 @@ class AI(commands.Cog):
         self,
         interaction: discord.Interaction, 
         language: Literal["English", "Thai"] = "English",
-        custom_prompt: str = None
+        custom_prompt: Optional[str] = None
     ):
         if not interaction.guild:
             await interaction.response.send_message("คำสั่งนี้ใช้ได้เฉพาะใน Server เท่านั้น")
@@ -340,7 +331,7 @@ class AI(commands.Cog):
         interaction: discord.Interaction, 
         question: str,
         language: Literal["English", "Thai"] = "English",
-        custom_prompt: str = None,
+        custom_prompt: Optional[str] = None,
         model: str = AIMODEL
     ):
         await interaction.response.defer()
