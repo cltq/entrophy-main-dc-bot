@@ -3,8 +3,10 @@ import asyncio
 import logging
 import logging.handlers
 from datetime import datetime, timezone
+from typing import Any, Optional
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
 
@@ -14,26 +16,26 @@ from utils.log_buffer import BufferHandler
 
 load_dotenv()
 
-TOKEN = os.getenv("DISCORD_TOKEN")
-OWNER_ID = int(os.getenv("BOT_OWNER_ID") or 0)
-BOT_PREFIX = os.getenv("BOT_PREFIX", "q")
-GLOBAL_PREFIX = os.getenv("BOT_GLOBAL_PREFIX", "dev!")
-LOG_CHANNEL_ID = os.getenv("LOG_CHANNEL_ID")
+TOKEN: str = os.getenv("DISCORD_TOKEN", "")
+OWNER_ID: int = int(os.getenv("BOT_OWNER_ID") or 0)
+BOT_PREFIX: str = os.getenv("BOT_PREFIX", "q")
+GLOBAL_PREFIX: str = os.getenv("BOT_GLOBAL_PREFIX", "dev!")
+LOG_CHANNEL_ID: Optional[str] = os.getenv("LOG_CHANNEL_ID")
 
-intents = discord.Intents.default()
+intents: discord.Intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 intents.dm_messages = True
 
-bot = commands.Bot(
+bot: commands.Bot = commands.Bot(
     command_prefix=[BOT_PREFIX, GLOBAL_PREFIX],
     intents=intents,
     help_command=None
 )
 
-bot.launch_time = datetime.now(timezone.utc)
+bot.launch_time: datetime = datetime.now(timezone.utc)
 
-logger = setup_advanced_logger("entrophy", level=LogLevel.VERBOSE)
+logger: Any = setup_advanced_logger("entrophy", level=LogLevel.VERBOSE)
 
 try:
     buf = BufferHandler()
@@ -56,7 +58,7 @@ except Exception:
     logger.exception("Failed to attach file handler")
 
 
-async def attach_discord_logger():
+async def attach_discord_logger() -> None:
     if not LOG_CHANNEL_ID:
         return
     try:
@@ -73,9 +75,9 @@ async def attach_discord_logger():
         logger.exception("Failed to attach DiscordHandler")
 
 
-original_setup = getattr(bot, "setup_hook", None)
+original_setup: Optional[Any] = getattr(bot, "setup_hook", None)
 
-async def combined_setup():
+async def combined_setup() -> None:
     if original_setup:
         await original_setup()
     await attach_discord_logger()
@@ -84,14 +86,14 @@ bot.setup_hook = combined_setup
 
 
 @bot.event
-async def on_ready():
+async def on_ready() -> None:
     log_event(logger, "Bot Ready", f"Logged in as {bot.user} (ID: {bot.user.id})")
     await sync_slash_commands()
 
 
 @bot.event
-async def on_command(ctx):
-    args = " ".join(ctx.args[2:]) if len(ctx.args) > 2 else ""
+async def on_command(ctx: commands.Context) -> None:
+    args: str = " ".join(ctx.args[2:]) if len(ctx.args) > 2 else ""
     log_command_execution(
         logger, "prefix", ctx.command.name,
         ctx.author, ctx.guild, ctx.channel, args
@@ -99,7 +101,7 @@ async def on_command(ctx):
 
 
 @bot.event
-async def on_app_command_completion(interaction: discord.Interaction, command):
+async def on_app_command_completion(interaction: discord.Interaction, command: app_commands.Command) -> None:
     log_command_execution(
         logger, "slash", command.name,
         interaction.user, interaction.guild, interaction.channel
@@ -107,7 +109,7 @@ async def on_app_command_completion(interaction: discord.Interaction, command):
 
 
 @bot.event
-async def on_command_error(ctx, error):
+async def on_command_error(ctx: commands.Context, error: commands.CommandError) -> None:
     if isinstance(error, commands.CommandNotFound):
         return
     elif isinstance(error, commands.MissingPermissions):
@@ -137,15 +139,15 @@ async def on_command_error(ctx, error):
         raise error
 
 
-async def sync_slash_commands():
-    synced = await bot.tree.sync()
+async def sync_slash_commands() -> None:
+    synced: list[app_commands.Command] = await bot.tree.sync()
     log_event(logger, "SlashCommandsSync", f"Synced {len(synced)} slash commands")
 
     try:
         for cmd in bot.tree.get_commands():
             guilds = getattr(cmd, "guilds", None)
             if guilds:
-                ids = [getattr(g, "id", g) for g in guilds]
+                ids: list[Any] = [getattr(g, "id", g) for g in guilds]
                 logger.verbose(f"Slash command {cmd.name}: guild-only -> {ids}")
             else:
                 logger.verbose(f"Slash command {cmd.name}: global")
@@ -153,7 +155,7 @@ async def sync_slash_commands():
         pass
 
 
-async def load_cogs():
+async def load_cogs() -> None:
     for filename in os.listdir("./cogs"):
         if filename.endswith(".py") and not filename.startswith("_"):
             try:
@@ -163,7 +165,7 @@ async def load_cogs():
                 logger.exception(f"Failed to load cog: {filename[:-3]}")
 
 
-async def main():
+async def main() -> None:
     async with bot:
         await load_cogs()
         await bot.start(TOKEN)
