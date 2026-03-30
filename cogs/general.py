@@ -1,16 +1,18 @@
 import os
+from typing import Any, Optional
+
 import discord
 from discord.ext import commands
 
 
 class HelpView(discord.ui.View):
-    def __init__(self, mapping, context, help_command):
+    def __init__(self, mapping: dict, context: commands.Context, help_command: Any) -> None:
         super().__init__(timeout=60)
         self.mapping = mapping
         self.context = context
         self.help_command = help_command
-        self.message = None
-        self.author_id = context.author.id
+        self.message: Optional[discord.Message] = None
+        self.author_id: int = context.author.id
 
         options = []
         for cog in mapping.keys():
@@ -37,7 +39,7 @@ class HelpView(discord.ui.View):
         self.category_select.options = options
 
     @discord.ui.select(placeholder="Select a category...", min_values=1, max_values=1)
-    async def category_select(self, interaction: discord.Interaction, select: discord.ui.Select):
+    async def category_select(self, interaction: discord.Interaction, select: discord.ui.Select) -> None:
         if interaction.user.id != self.author_id:
             await interaction.response.send_message("❌ This help menu is not for you!", ephemeral=True)
             return
@@ -84,19 +86,19 @@ class HelpView(discord.ui.View):
         embed.set_footer(text="React with ❌ to close this menu")
         await interaction.response.edit_message(embed=embed, view=self)
 
-    async def on_timeout(self):
+    async def on_timeout(self) -> None:
         for item in self.children:
             item.disabled = True
         if self.message:
             try:
                 await self.message.edit(view=self)
-            except:
+            except Exception:
                 pass
 
 
 class CustomHelp(commands.MinimalHelpCommand):
-    async def send_bot_help(self, mapping):
-        filtered_mapping = {}
+    async def send_bot_help(self, mapping: dict) -> None:
+        filtered_mapping: dict = {}
         for cog, cmds in mapping.items():
             filtered = []
             for cmd in cmds:
@@ -138,7 +140,7 @@ class CustomHelp(commands.MinimalHelpCommand):
         view.message = message
         await message.add_reaction("❌")
 
-        def check(reaction, user):
+        def check(reaction: discord.Reaction, user: discord.User) -> bool:
             return (
                 user.id == self.context.author.id
                 and str(reaction.emoji) == "❌"
@@ -148,10 +150,10 @@ class CustomHelp(commands.MinimalHelpCommand):
         try:
             await self.context.bot.wait_for("reaction_add", timeout=60.0, check=check)
             await message.delete()
-        except:
+        except Exception:
             pass
 
-    async def send_command_help(self, command):
+    async def send_command_help(self, command: commands.Command) -> None:
         embed = discord.Embed(
             title=f"ℹ️ Command: {command.name}",
             description=command.help or "No description available.",
@@ -173,7 +175,7 @@ class CustomHelp(commands.MinimalHelpCommand):
 
         await self.get_destination().send(embed=embed)
 
-    async def send_cog_help(self, cog):
+    async def send_cog_help(self, cog: commands.Cog) -> None:
         embed = discord.Embed(
             title=f"📚 {cog.qualified_name}",
             description=cog.description or "No description available.",
@@ -205,19 +207,19 @@ class CustomHelp(commands.MinimalHelpCommand):
 
 
 class General(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
+    def __init__(self, bot: commands.Bot) -> None:
+        self.bot: commands.Bot = bot
 
     @commands.command(name="ping")
-    async def ping(self, ctx):
+    async def ping(self, ctx: commands.Context) -> None:
         await ctx.send(f"Pong! 🏓 `{round(self.bot.latency*1000)}ms`")
 
     @discord.app_commands.command(name="ping", description="Check bot latency")
-    async def slash_ping(self, interaction: discord.Interaction):
+    async def slash_ping(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_message(f"Pong! 🏓 `{round(self.bot.latency*1000)}ms`")
 
     @discord.app_commands.command(name="bot", description="Bot control panel")
-    async def bot_info(self, interaction: discord.Interaction):
+    async def bot_info(self, interaction: discord.Interaction) -> None:
         owner_id = int(os.getenv("BOT_OWNER_ID", 0))
         is_owner = interaction.user.id == owner_id
 
@@ -226,7 +228,7 @@ class General(commands.Cog):
         embed.add_field(name="Latency", value=f"{round(self.bot.latency*1000)}ms", inline=True)
 
         class BotControlView(discord.ui.View):
-            def __init__(self, bot, owner_id):
+            def __init__(self, bot: commands.Bot, owner_id: int) -> None:
                 super().__init__(timeout=60)
                 self.bot = bot
                 self.owner_id = owner_id
@@ -239,17 +241,17 @@ class General(commands.Cog):
                 return True
 
             @discord.ui.button(label="Restart", style=discord.ButtonStyle.secondary, emoji="🔄")
-            async def restart_btn(self, i: discord.Interaction, b: discord.ui.Button):
+            async def restart_btn(self, i: discord.Interaction, b: discord.ui.Button) -> None:
                 await i.response.send_message("🔄 Restarting...", ephemeral=True)
                 await self.bot.close()
 
             @discord.ui.button(label="Shutdown", style=discord.ButtonStyle.danger, emoji="🛑")
-            async def shutdown_btn(self, i: discord.Interaction, b: discord.ui.Button):
+            async def shutdown_btn(self, i: discord.Interaction, b: discord.ui.Button) -> None:
                 await i.response.send_message("🛑 Shutting down...", ephemeral=True)
                 await self.bot.close()
 
             @discord.ui.button(label="Sync Commands", style=discord.ButtonStyle.primary, emoji="⚡")
-            async def sync_btn(self, i: discord.Interaction, b: discord.ui.Button):
+            async def sync_btn(self, i: discord.Interaction, b: discord.ui.Button) -> None:
                 try:
                     synced = await self.bot.tree.sync()
                     await i.response.send_message(f"✅ Synced {len(synced)} commands", ephemeral=True)
@@ -257,7 +259,7 @@ class General(commands.Cog):
                     await i.response.send_message(f"❌ Error: {e}", ephemeral=True)
 
             @discord.ui.button(label="Cogs", style=discord.ButtonStyle.secondary, emoji="📦")
-            async def cogs_btn(self, i: discord.Interaction, b: discord.ui.Button):
+            async def cogs_btn(self, i: discord.Interaction, b: discord.ui.Button) -> None:
                 cogs = list(self.bot.cogs.keys())
                 embed = discord.Embed(title="📦 Loaded Cogs", description="\n".join(f"• `{cog}`" for cog in sorted(cogs)), color=discord.Color.blue())
                 await i.response.send_message(embed=embed, ephemeral=True)
@@ -265,6 +267,6 @@ class General(commands.Cog):
         await interaction.response.send_message(embed=embed, view=BotControlView(self.bot, owner_id))
 
 
-async def setup(bot):
+async def setup(bot: commands.Bot) -> None:
     bot.help_command = CustomHelp()
     await bot.add_cog(General(bot))
