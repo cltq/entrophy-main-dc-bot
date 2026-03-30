@@ -5,12 +5,12 @@ from typing import Any, Optional
 
 
 class LogLevel:
-    VERBOSE = 5
-    DEBUG = 10
-    INFO = 20
-    WARNING = 30
-    ERROR = 40
-    CRITICAL = 50
+    VERBOSE: int = 5
+    DEBUG: int = 10
+    INFO: int = 20
+    WARNING: int = 30
+    ERROR: int = 40
+    CRITICAL: int = 50
 
 
 logging.addLevelName(LogLevel.VERBOSE, "VERBOSE")
@@ -26,7 +26,7 @@ logging.setLoggerClass(ContextLogger)
 
 
 class AdvancedFormatter(logging.Formatter):
-    COLORS = {
+    COLORS: dict[int, str] = {
         LogLevel.VERBOSE: "\033[36m",
         LogLevel.DEBUG: "\033[34m",
         LogLevel.INFO: "\033[32m",
@@ -34,9 +34,9 @@ class AdvancedFormatter(logging.Formatter):
         LogLevel.ERROR: "\033[31m",
         LogLevel.CRITICAL: "\033[41m",
     }
-    RESET = "\033[0m"
+    RESET: str = "\033[0m"
 
-    EMOJIS = {
+    EMOJIS: dict[int, str] = {
         LogLevel.VERBOSE: "🔍",
         LogLevel.DEBUG: "🐛",
         LogLevel.INFO: "ℹ️ ",
@@ -51,7 +51,7 @@ class AdvancedFormatter(logging.Formatter):
         msg = f"{emoji} [{level}] {record.getMessage()}"
         timestamp = datetime.fromtimestamp(record.created).strftime("%Y-%m-%d %H:%M:%S")
 
-        context_parts = []
+        context_parts: list[str] = []
 
         user = getattr(record, "user", None)
         if user:
@@ -76,7 +76,7 @@ class AdvancedFormatter(logging.Formatter):
         return formatted
 
 
-def setup_advanced_logger(name: str = "entrophy", level: int = LogLevel.VERBOSE):
+def setup_advanced_logger(name: str = "entrophy", level: int = LogLevel.VERBOSE) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(level)
     logger.handlers = []
@@ -124,7 +124,7 @@ def log_error(
     guild: Any = None,
     exc_info: bool = False,
 ) -> None:
-    extra = {"user": user, "command": command, "channel": channel, "guild": guild}
+    extra: dict[str, Any] = {"user": user, "command": command, "channel": channel, "guild": guild}
 
     if exc_info:
         logger.exception(f"Error [{error_type}]: {error_msg}", extra=extra)
