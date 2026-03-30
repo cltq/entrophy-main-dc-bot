@@ -216,53 +216,6 @@ class General(commands.Cog):
     async def slash_ping(self, interaction: discord.Interaction):
         await interaction.response.send_message(f"Pong! 🏓 `{round(self.bot.latency*1000)}ms`")
 
-    @discord.app_commands.command(name="botinfo", description="Bot control panel")
-    async def botinfo_slash(self, interaction: discord.Interaction):
-        owner_id = int(os.getenv("BOT_OWNER_ID", 0))
-        is_owner = interaction.user.id == owner_id
-
-        embed = discord.Embed(title="🤖 Bot Control Panel", color=discord.Color.blurple())
-        embed.add_field(name="Servers", value=str(len(self.bot.guilds)), inline=True)
-        embed.add_field(name="Latency", value=f"{round(self.bot.latency*1000)}ms", inline=True)
-
-        class BotControlView(discord.ui.View):
-            def __init__(self, bot, owner_id):
-                super().__init__(timeout=60)
-                self.bot = bot
-                self.owner_id = owner_id
-                self.author_id = interaction.user.id
-
-            async def interaction_check(self, interaction: discord.Interaction) -> bool:
-                if interaction.user.id != self.owner_id:
-                    await interaction.response.send_message("❌ Owner only!", ephemeral=True)
-                    return False
-                return True
-
-            @discord.ui.button(label="Restart", style=discord.ButtonStyle.secondary, emoji="🔄")
-            async def restart_btn(self, i: discord.Interaction, b: discord.ui.Button):
-                await i.response.send_message("🔄 Restarting...", ephemeral=True)
-                await self.bot.close()
-
-            @discord.ui.button(label="Shutdown", style=discord.ButtonStyle.danger, emoji="🛑")
-            async def shutdown_btn(self, i: discord.Interaction, b: discord.ui.Button):
-                await i.response.send_message("🛑 Shutting down...", ephemeral=True)
-                await self.bot.close()
-
-            @discord.ui.button(label="Sync Commands", style=discord.ButtonStyle.primary, emoji="⚡")
-            async def sync_btn(self, i: discord.Interaction, b: discord.ui.Button):
-                try:
-                    synced = await self.bot.tree.sync()
-                    await i.response.send_message(f"✅ Synced {len(synced)} commands", ephemeral=True)
-                except Exception as e:
-                    await i.response.send_message(f"❌ Error: {e}", ephemeral=True)
-
-            @discord.ui.button(label="Cogs", style=discord.ButtonStyle.secondary, emoji="📦")
-            async def cogs_btn(self, i: discord.Interaction, b: discord.ui.Button):
-                cogs = list(self.bot.cogs.keys())
-                embed = discord.Embed(title="📦 Loaded Cogs", description="\n".join(f"• `{cog}`" for cog in sorted(cogs)), color=discord.Color.blue())
-                await i.response.send_message(embed=embed, ephemeral=True)
-
-        await interaction.response.send_message(embed=embed, view=BotControlView(self.bot, owner_id))
 
 
 async def setup(bot):
