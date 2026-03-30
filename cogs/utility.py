@@ -1,47 +1,49 @@
-import discord
 import datetime
+from typing import Any, Optional
+
+import discord
 from discord.ext import commands
 from utils.helpers import get_uptime, get_bangkok_time, BANGKOK_TZ
 
 
 class Utility(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
+    def __init__(self, bot: commands.Bot) -> None:
+        self.bot: commands.Bot = bot
         self.ctx_menu = discord.app_commands.ContextMenu(
             name="User Info",
             callback=self.context_userinfo,
         )
         self.bot.tree.add_command(self.ctx_menu)
 
-    async def cog_unload(self):
+    async def cog_unload(self) -> None:
         self.bot.tree.remove_command(self.ctx_menu.name, type=self.ctx_menu.type)
 
     @commands.command(name="uptime")
-    async def uptime(self, ctx):
+    async def uptime(self, ctx: commands.Context) -> None:
         await ctx.send(f"⏱️ Bot uptime: `{get_uptime(self.bot.launch_time)}`")
 
     @discord.app_commands.command(name="uptime", description="Show bot uptime")
     @discord.app_commands.allowed_installs(guilds=True, users=True)
     @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
-    async def slash_uptime(self, interaction: discord.Interaction):
+    async def slash_uptime(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_message(f"⏱️ Bot uptime: `{get_uptime(self.bot.launch_time)}`")
 
     @commands.command(name="rtclock")
-    async def rtclock(self, ctx):
+    async def rtclock(self, ctx: commands.Context) -> None:
         now = get_bangkok_time()
         await ctx.send(f"⏱️ Bot Realtime: `{now.strftime('%H:%M:%S')}`")
 
     @discord.app_commands.command(name="rtclock", description="Show bot realtime")
     @discord.app_commands.allowed_installs(guilds=True, users=True)
     @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
-    async def slash_rtclock(self, interaction: discord.Interaction):
+    async def slash_rtclock(self, interaction: discord.Interaction) -> None:
         now = get_bangkok_time()
         await interaction.response.send_message(f"⏱️ Bot Realtime: `{now.strftime('%H:%M:%S')}`")
 
     @commands.command(name="usr")
-    async def userinfo(self, ctx, user: discord.User = None):
+    async def userinfo(self, ctx: commands.Context, user: Optional[discord.User] = None) -> None:
         user = user or ctx.author
-        member = None
+        member: Optional[discord.Member] = None
         if ctx.guild and isinstance(user, discord.Member):
             member = user
         elif ctx.guild:
@@ -54,9 +56,9 @@ class Utility(commands.Cog):
     @discord.app_commands.describe(user="The user to get information about")
     @discord.app_commands.allowed_installs(guilds=True, users=True)
     @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
-    async def slash_userinfo(self, interaction: discord.Interaction, user: discord.User = None):
+    async def slash_userinfo(self, interaction: discord.Interaction, user: Optional[discord.User] = None) -> None:
         user = user or interaction.user
-        member = None
+        member: Optional[discord.Member] = None
         if interaction.guild and isinstance(user, discord.Member):
             member = user
         elif interaction.guild:
@@ -67,8 +69,8 @@ class Utility(commands.Cog):
 
     @discord.app_commands.allowed_installs(guilds=True, users=True)
     @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
-    async def context_userinfo(self, interaction: discord.Interaction, user: discord.User):
-        member = None
+    async def context_userinfo(self, interaction: discord.Interaction, user: discord.User) -> None:
+        member: Optional[discord.Member] = None
         if interaction.guild and isinstance(user, discord.Member):
             member = user
         elif interaction.guild:
@@ -77,7 +79,7 @@ class Utility(commands.Cog):
         embed = await self._create_userinfo_embed(user, member, interaction.user)
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    async def _create_userinfo_embed(self, user: discord.User, member: discord.Member, requester: discord.User):
+    async def _create_userinfo_embed(self, user: discord.User, member: Optional[discord.Member], requester: discord.User) -> discord.Embed:
         embed = discord.Embed(
             title=f"User Information - {user}",
             color=member.color if member and member.color != discord.Color.default() else discord.Color.blue(),
