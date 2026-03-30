@@ -1,14 +1,14 @@
 import collections
 import logging
-from typing import Deque
+from collections import deque
+from typing import Any, Optional
 
-# Simple in-memory ring buffer for recent log lines
-LOG_BUFFER_MAX = 500
-LOG_BUFFER: Deque[str] = collections.deque(maxlen=LOG_BUFFER_MAX)
+LOG_BUFFER_MAX: int = 500
+LOG_BUFFER: deque[str] = collections.deque(maxlen=LOG_BUFFER_MAX)
 
 
 class BufferHandler(logging.Handler):
-    def __init__(self, fmt=None):
+    def __init__(self, fmt: Optional[logging.Formatter] = None) -> None:
         super().__init__()
         if fmt is None:
             fmt = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")
