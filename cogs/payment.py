@@ -1,17 +1,20 @@
+import asyncio
+import io
+import json
+import os
+import re
+import uuid
+from datetime import datetime
+from typing import Any, Optional
+
 import discord
+from discord import app_commands
 from discord.ext import commands
-import discord.app_commands
-import io, os, re, uuid, asyncio
 import qrcode
 from qrcode.constants import ERROR_CORRECT_H
 from PIL import Image
-from datetime import datetime
-import json
 
-# =========================
-# ⚙️ CONFIGURATION
-# =========================
-LOGO_PATH = "promptpay_logo.png" 
+LOGO_PATH: str = "promptpay_logo.png" 
 
 # =========================
 # 🛠️ PROMPTPAY & IMAGE LOGIC
