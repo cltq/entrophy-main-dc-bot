@@ -2,17 +2,19 @@ import os
 import sys
 import datetime
 from itertools import cycle
-import discord
-from discord.ext import commands, tasks
-from discord import app_commands
-from utils.helpers import get_uptime, get_bangkok_time, BANGKOK_TZ
+from typing import Any, Optional
+
 import aiohttp
+import discord
+from discord import app_commands
+from discord.ext import commands, tasks
+from utils.helpers import get_uptime, get_bangkok_time
 
 
 class Owner(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-        self.cycle_paused = False
+    def __init__(self, bot: commands.Bot) -> None:
+        self.bot: commands.Bot = bot
+        self.cycle_paused: bool = False
         self.statuses = cycle([
             lambda: f"Uptime: {get_uptime(getattr(self.bot, 'launch_time', None))}",
             lambda: f"Owner: {self.bot.get_user(int(os.getenv('BOT_OWNER_ID', 0))).name if self.bot.get_user(int(os.getenv('BOT_OWNER_ID', 0))) else 'Unknown'}",
@@ -21,11 +23,11 @@ class Owner(commands.Cog):
         ])
         self.status_cycle.start()
 
-    def cog_unload(self):
+    def cog_unload(self) -> None:
         self.status_cycle.cancel()
 
     @tasks.loop(seconds=5)
-    async def status_cycle(self):
+    async def status_cycle(self) -> None:
         if self.cycle_paused:
             return
         try:
@@ -38,12 +40,12 @@ class Owner(commands.Cog):
             print(f"Error in status cycle: {e}")
 
     @status_cycle.before_loop
-    async def before_status_cycle(self):
+    async def before_status_cycle(self) -> None:
         await self.bot.wait_until_ready()
 
     @commands.command(name="bot", help="Owner-only: manage the bot with subcommands.")
     @commands.is_owner()
-    async def bot(self, ctx, action: str, *params):
+    async def bot(self, ctx: commands.Context, action: str, *params: str) -> None:
         action = action.lower()
 
         if action in ("status", "setstatus", "stat", "setstate", "state"):
@@ -148,14 +150,16 @@ class Owner(commands.Cog):
         if action in ("profile", "botinfo"):
             user = self.bot.user
             embed = discord.Embed(title="🤖 Bot Profile", color=discord.Color.blue())
-            embed.set_thumbnail(url=user.display_avatar.url)
-            if user.banner:
-                embed.set_image(url=user.banner.url)
-            embed.add_field(name="Username", value=user.name, inline=True)
-            embed.add_field(name="ID", value=user.id, inline=True)
-            embed.add_field(name="Created At", value=user.created_at.strftime("%Y-%m-%d %H:%M:%S"), inline=False)
+            if user:
+                embed.set_thumbnail(url=user.display_avatar.url)
+                if user.banner:
+                    embed.set_image(url=user.banner.url)
+                embed.add_field(name="Username", value=user.name, inline=True)
+                embed.add_field(name="ID", value=user.id, inline=True)
+                embed.add_field(name="Created At", value=user.created_at.strftime("%Y-%m-%d %H:%M:%S"), inline=False)
             embed.add_field(name="Servers", value=len(self.bot.guilds), inline=True)
-            embed.add_field(name="Users", value=sum(g.member_count for g in self.bot.guilds), inline=True)
+            total_members = sum(g.member_count or 0 for g in self.bot.guilds)
+            embed.add_field(name="Users", value=str(total_members), inline=True)
             await ctx.send(embed=embed)
             return
 
@@ -225,7 +229,7 @@ class Owner(commands.Cog):
         await ctx.send("❌ Unknown action. Use `!bot help` for usage.")
 
     @bot.error
-    async def bot_error(self, ctx, error):
+    async def bot_error(self, ctx: commands.Context, error: commands.CommandError) -> None:
         if isinstance(error, commands.NotOwner):
             await ctx.send("❌ Only the bot owner can use this command.")
         else:
@@ -235,7 +239,7 @@ class Owner(commands.Cog):
         owner_id = int(os.getenv("BOT_OWNER_ID", 0))
         return interaction.user.id == owner_id
 
-    async def action_autocomplete(self, interaction: discord.Interaction, current: str):
+    async def action_autocomplete(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
         actions = ["restart", "shutdown", "reload", "load", "unload", "sync", "cogs", "profile", "pause", "resume"]
         return [app_commands.Choice(name=action, value=action) for action in actions if action.startswith(current.lower())]
 
@@ -243,7 +247,7 @@ class Owner(commands.Cog):
     @app_commands.check(bot_control_check)
     @app_commands.describe(action="The action to perform", args="Arguments for the action")
     @app_commands.autocomplete(action=action_autocomplete)
-    async def botcontrol(self, interaction: discord.Interaction, action: str, args: str = None):
+    async def botcontrol(self, interaction: discord.Interaction, action: str, args: Optional[str] = None) -> None:
         await interaction.response.defer(ephemeral=True)
         action = action.lower()
 
