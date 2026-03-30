@@ -4,6 +4,10 @@
 
 ## 2026-03-30
 
+### Commit: 93a8994
+- **Time:** 2026-03-30
+- **Description:** fix: rename bot_info to control_panel to avoid reserved bot_ prefix - Files: cogs/general.py
+
 ### Commit: e8bf79d
 - **Time:** 2026-03-30
 - **Description:** docs: update AGENTS.md for Discord bot
