@@ -83,6 +83,25 @@ class Say(commands.Cog):
                 except Exception:
                     pass
 
+    @discord.app_commands.command(name="ys", description=".")
+    @app_commands.describe(message="The message the bot will send publicly.")
+    @discord.app_commands.allowed_installs(guilds=True, users=True)
+    @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+    async def ys(self, interaction: discord.Interaction, message: str, channel_id: Optional[str] = None, amount: int = 1) -> None:
+
+        # Build the full message with sender attribution
+        full_message = f"{message}"
+
+        # If the command is used in DM
+        if isinstance(interaction.channel, discord.DMChannel):
+            await interaction.response.send_message(":white_check_mark: Message sent Successfully.", ephemeral=True)
+            await interaction.followup.send(full_message)
+
+        # If the command is in a guild (server)
+
+            await interaction.response.send_message("Success!", ephemeral=True)
+            await interaction.followup.send(full_message)
+
 
 async def setup(bot):
     await bot.add_cog(Say(bot))
