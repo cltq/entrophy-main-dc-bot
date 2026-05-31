@@ -2,6 +2,24 @@
 
 ---
 
+## 2026-05-31
+
+### Agent: big-pickle (opencode)
+- **User Requested:** "rewrite and refactor every code in the bot. Also make the comments in the code in thai. and switch this bot from english to thai. dont forget to update every packages"
+- **Agent Response:** Completed rewriting all 22 files to Thai language - comments, user messages, descriptions, docstrings all in Thai. Updated packages (replaced pytz with tzdata+zoneinfo).
+- **Actions Taken:**
+  - Updated requirements.txt with latest packages
+  - Rewrote all 4 utils files (helpers, advanced_logger, discord_logger, log_buffer) - Thai comments, Thai log labels
+  - Rewrote main.py and keep_alive.py - Thai comments and user messages
+  - Rewrote all 11 active cogs (admin, ai, channel_manager, game_profile_puller, general, owner, payment, say, utility, vc, work) - full Thai localization
+  - Rewrote all 3 unused cogs (moderation, tts, vc) - Thai comments
+  - Updated config/ai_channel_config.json - Thai prompts
+  - Replaced pytz with built-in zoneinfo + tzdata
+  - Verified all 20 Python files pass syntax check
+  - Verified all utils import correctly
+  - Committed with message: "refactor: rewrite bot to Thai language"
+  - Pushed to remote---
+
 ## 2026-03-30
 
 ### Agent: big-pickle (opencode)

@@ -2,6 +2,14 @@
 
 ---
 
+## 2026-05-31
+
+### Commit: 71bd675
+- **Description:** refactor: rewrite bot to Thai language - Files: all .py, requirements.txt, config/ai_channel_config.json
+- **Files:** main.py, keep_alive.py, cogs/*.py, utils/*.py, .unused_cogs/*.py, config/ai_channel_config.json, requirements.txt (22 files)
+
+---
+
 ## 2026-03-30
 
 ### Commit: 93a8994
