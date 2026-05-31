@@ -18,6 +18,7 @@ class Admin(commands.Cog):
         self.bot: commands.Bot = bot
 
     def is_admin_or_owner() -> Any:
+        """ตรวจสอบว่าผู้ใช้มีบทบาท Admin หรือเป็นเจ้าของบอท"""
         async def predicate(ctx: commands.Context) -> bool:
             if await ctx.bot.is_owner(ctx.author):
                 return True
@@ -25,12 +26,13 @@ class Admin(commands.Cog):
                 admin_role = discord.utils.get(ctx.guild.roles, name="Admin")
                 if admin_role and admin_role in ctx.author.roles:
                     return True
-            raise commands.MissingPermissions(["Admin role or Bot Owner"])
+            raise commands.MissingPermissions(["บทบาท Admin หรือเจ้าของบอท"])
         return commands.check(predicate)
 
     @commands.command()
     @is_admin_or_owner()
     async def restart(self, ctx: commands.Context) -> None:
+        """รีสตาร์ทบอท"""
         restart_meta = {
             "requested_by_id": ctx.author.id,
             "requested_by_name": str(ctx.author),
@@ -45,12 +47,12 @@ class Admin(commands.Cog):
             pass
 
         embed = discord.Embed(
-            title="🔁 Restarting Bot",
-            description="Please wait... restarting now.",
+            title="🔁 กำลังรีสตาร์ทบอท",
+            description="กรุณารอสักครู่... กำลังรีสตาร์ท",
             color=discord.Color.orange(),
             timestamp=datetime.datetime.now(BANGKOK_TZ)
         )
-        embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.display_avatar.url)
+        embed.set_footer(text=f"ร้องขอโดย {ctx.author}", icon_url=ctx.author.display_avatar.url)
         await ctx.send(embed=embed)
         await asyncio.sleep(2)
         os.execv(sys.executable, ["python"] + sys.argv)

@@ -8,219 +8,219 @@ from io import BytesIO
 import tempfile
 
 class TTS(commands.Cog):
-    """Text-To-Speech functionality for voice channels"""
+    """ฟังก์ชันข้อความเป็นเสียงสำหรับช่องเสียง"""
 
     def __init__(self, bot):
         self.bot = bot
-        self.voice_clients = {}  # Store voice client connections per guild
+        self.voice_clients = {}  # เก็บการเชื่อมต่อ voice client ตามกิลด์
 
     def cleanup(self):
-        """Cleanup temp files"""
+        """ลบไฟล์ชั่วคราว"""
         pass
 
     async def speak_text(self, voice_client: discord.VoiceClient, text: str, language: str = "en"):
-        """Convert text to speech and play in voice channel"""
+        """แปลงข้อความเป็นเสียงและเล่นในช่องเสียง"""
         try:
-            # Create TTS
+            # สร้าง TTS
             tts = gtts.gTTS(text=text, lang=language, slow=False)
-            
-            # Create temporary file
+
+            # สร้างไฟล์ชั่วคราว
             with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
                 temp_file = fp.name
                 tts.save(temp_file)
-            
-            # Create audio source
+
+            # สร้างแหล่งเสียง
             audio_source = discord.FFmpegPCMAudio(temp_file)
-            
-            # Play audio
+
+            # เล่นเสียง
             if not voice_client.is_playing():
                 voice_client.play(
                     audio_source,
                     after=lambda e: self.cleanup_audio(temp_file)
                 )
             else:
-                # Queue if already playing
+                # เข้าคิวหากกำลังเล่นอยู่
                 await asyncio.sleep(1)
                 voice_client.play(
                     audio_source,
                     after=lambda e: self.cleanup_audio(temp_file)
                 )
-                
+
         except Exception as e:
             print(f"[TTS ERROR] {e}")
             raise
 
     def cleanup_audio(self, file_path: str):
-        """Cleanup temporary audio file"""
+        """ลบไฟล์เสียงชั่วคราว"""
         try:
             if os.path.exists(file_path):
                 os.remove(file_path)
         except Exception as e:
             print(f"[TTS CLEANUP ERROR] {e}")
 
-    voice_group = app_commands.Group(name="bot", description="🤖 Bot voice commands")
+    voice_group = app_commands.Group(name="bot", description="🤖 คำสั่งเสียงบอท")
     voice_group.allowed_contexts(guilds=True)
 
-    @voice_group.command(name="join", description="Join your current voice channel")
+    @voice_group.command(name="join", description="เข้าร่วมช่องเสียงปัจจุบันของคุณ")
     @app_commands.describe()
     async def join(self, interaction: discord.Interaction):
-        """Join the voice channel of the user"""
+        """เข้าร่วมช่องเสียงของผู้ใช้"""
         await interaction.response.defer(ephemeral=True)
-        
+
         try:
-            # Check if user is in a voice channel
+            # ตรวจสอบว่าผู้ใช้อยู่ในช่องเสียงหรือไม่
             if not interaction.user.voice or not interaction.user.voice.channel:
                 await interaction.followup.send(
-                    "❌ You must be in a voice channel to use this command!",
+                    "❌ คุณต้องอยู่ในช่องเสียงเพื่อใช้คำสั่งนี้!",
                     ephemeral=True
                 )
                 return
-            
+
             voice_channel = interaction.user.voice.channel
-            
-            # Check if bot is already in a voice channel
+
+            # ตรวจสอบว่าบอทอยู่ในช่องเสียงอยู่แล้วหรือไม่
             if interaction.guild.voice_client:
                 if interaction.guild.voice_client.channel == voice_channel:
                     await interaction.followup.send(
-                        f"✅ I'm already in {voice_channel.mention}!",
+                        f"✅ ฉันอยู่ใน {voice_channel.mention} อยู่แล้ว!",
                         ephemeral=True
                     )
                     return
                 else:
-                    # Disconnect from current channel
+                    # ตัดการเชื่อมต่อจากช่องปัจจุบัน
                     await interaction.guild.voice_client.disconnect()
-            
-            # Join the voice channel
+
+            # เข้าร่วมช่องเสียง
             voice_client = await voice_channel.connect()
             self.voice_clients[interaction.guild.id] = voice_client
-            
+
             embed = discord.Embed(
-                title="✅ Joined Voice Channel",
-                description=f"Connected to {voice_channel.mention}",
+                title="✅ เข้าร่วมช่องเสียงแล้ว",
+                description=f"เชื่อมต่อกับ {voice_channel.mention}",
                 color=discord.Color.green()
             )
             await interaction.followup.send(embed=embed, ephemeral=True)
-            
+
         except discord.ClientException:
             await interaction.followup.send(
-                "❌ I'm already connected to a voice channel!",
+                "❌ ฉันเชื่อมต่อกับช่องเสียงอยู่แล้ว!",
                 ephemeral=True
             )
         except Exception as e:
             await interaction.followup.send(
-                f"❌ Error joining voice channel: {str(e)}",
+                f"❌ เกิดข้อผิดพลาดในการเข้าร่วมช่องเสียง: {str(e)}",
                 ephemeral=True
             )
 
-    @voice_group.command(name="leave", description="Leave the voice channel")
+    @voice_group.command(name="leave", description="ออกจากช่องเสียง")
     @app_commands.describe()
     async def leave(self, interaction: discord.Interaction):
-        """Leave the voice channel"""
+        """ออกจากช่องเสียง"""
         await interaction.response.defer(ephemeral=True)
-        
+
         try:
-            # Check if bot is in a voice channel
+            # ตรวจสอบว่าบอทอยู่ในช่องเสียงหรือไม่
             if not interaction.guild.voice_client:
                 await interaction.followup.send(
-                    "❌ I'm not in a voice channel!",
+                    "❌ ฉันไม่ได้อยู่ในช่องเสียง!",
                     ephemeral=True
                 )
                 return
-            
+
             voice_channel = interaction.guild.voice_client.channel
             await interaction.guild.voice_client.disconnect()
-            
+
             if interaction.guild.id in self.voice_clients:
                 del self.voice_clients[interaction.guild.id]
-            
+
             embed = discord.Embed(
-                title="✅ Left Voice Channel",
-                description=f"Disconnected from {voice_channel.mention}",
+                title="✅ ออกจากช่องเสียงแล้ว",
+                description=f"ตัดการเชื่อมต่อจาก {voice_channel.mention}",
                 color=discord.Color.green()
             )
             await interaction.followup.send(embed=embed, ephemeral=True)
-            
+
         except Exception as e:
             await interaction.followup.send(
-                f"❌ Error leaving voice channel: {str(e)}",
+                f"❌ เกิดข้อผิดพลาดในการออกจากช่องเสียง: {str(e)}",
                 ephemeral=True
             )
 
-    @voice_group.command(name="speak", description="Speak text in the voice channel")
-    @app_commands.describe(text="Text to speak", language="Language (en=English, th=Thai)")
+    @voice_group.command(name="speak", description="พูดข้อความในช่องเสียง")
+    @app_commands.describe(text="ข้อความที่จะพูด", language="ภาษา (en=อังกฤษ, th=ไทย)")
     async def speak(self, interaction: discord.Interaction, text: str, language: str = "en"):
-        """Speak text in the voice channel"""
+        """พูดข้อความในช่องเสียง"""
         await interaction.response.defer(ephemeral=True)
-        
+
         try:
-            # Validate language
+            # ตรวจสอบภาษา
             supported_languages = {
                 "en": "English",
                 "th": "Thai"
             }
-            
+
             lang_code = language.lower()
             if lang_code not in supported_languages:
                 await interaction.followup.send(
-                    f"❌ Unsupported language: `{language}`. Supported: en (English), th (Thai)",
+                    f"❌ ไม่รองรับภาษา: `{language}`. รองรับ: en (อังกฤษ), th (ไทย)",
                     ephemeral=True
                 )
                 return
-            
-            # Check if bot is in a voice channel
+
+            # ตรวจสอบว่าบอทอยู่ในช่องเสียงหรือไม่
             if not interaction.guild.voice_client:
                 await interaction.followup.send(
-                    "❌ I'm not in a voice channel! Use `/bot join` first.",
+                    "❌ ฉันไม่ได้อยู่ในช่องเสียง! ใช้ `/bot join` ก่อน",
                     ephemeral=True
                 )
                 return
-            
-            # Check text length
+
+            # ตรวจสอบความยาวข้อความ
             if len(text) > 500:
                 await interaction.followup.send(
-                    "❌ Text is too long! Maximum 500 characters.",
+                    "❌ ข้อความยาวเกินไป! สูงสุด 500 ตัวอักษร",
                     ephemeral=True
                 )
                 return
-            
+
             voice_client = interaction.guild.voice_client
-            
-            # Check if user is in the same voice channel
+
+            # ตรวจสอบว่าผู้ใช่อยู่ในช่องเสียงเดียวกัน
             if not interaction.user.voice or interaction.user.voice.channel != voice_client.channel:
                 await interaction.followup.send(
-                    f"❌ You must be in {voice_client.channel.mention} to use this command!",
+                    f"❌ คุณต้องอยู่ใน {voice_client.channel.mention} เพื่อใช้คำสั่งนี้!",
                     ephemeral=True
                 )
                 return
-            
-            # Create TTS with selected language
+
+            # สร้าง TTS ด้วยภาษาที่เลือก
             tts = gtts.gTTS(text=text, lang=lang_code, slow=False)
-            
-            # Create temporary file
+
+            # สร้างไฟล์ชั่วคราว
             with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
                 temp_file = fp.name
                 tts.save(temp_file)
-            
-            # Create audio source and play
+
+            # สร้างแหล่งเสียงและเล่น
             audio_source = discord.FFmpegPCMAudio(temp_file)
             voice_client.play(
                 audio_source,
                 after=lambda e: self.cleanup_audio(temp_file) if e is None else print(f"Playback error: {e}")
             )
-            
+
             embed = discord.Embed(
-                title="🔊 Speaking",
-                description=f"**Language:** {supported_languages[lang_code]}\n**Text:** {text[:100]}{'...' if len(text) > 100 else ''}",
+                title="🔊 กำลังพูด",
+                description=f"**ภาษา:** {supported_languages[lang_code]}\n**ข้อความ:** {text[:100]}{'...' if len(text) > 100 else ''}",
                 color=discord.Color.blue()
             )
             await interaction.followup.send(embed=embed, ephemeral=True)
-            
+
         except Exception as e:
             await interaction.followup.send(
-                f"❌ Error speaking text: {str(e)}",
+                f"❌ เกิดข้อผิดพลาดในการพูดข้อความ: {str(e)}",
                 ephemeral=True
             )
 
 async def setup(bot):
-    """Required function to load the cog"""
+    """ฟังก์ชันที่จำเป็นสำหรับโหลด cog"""
     await bot.add_cog(TTS(bot))

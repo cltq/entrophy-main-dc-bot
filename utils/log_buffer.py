@@ -3,11 +3,15 @@ import logging
 from collections import deque
 from typing import Any, Optional
 
+# ขนาดสูงสุดของบัฟเฟอร์บันทึก
 LOG_BUFFER_MAX: int = 500
+# เก็บข้อความบันทึกล่าสุดไว้ในคิวแบบวน
 LOG_BUFFER: deque[str] = collections.deque(maxlen=LOG_BUFFER_MAX)
 
 
 class BufferHandler(logging.Handler):
+    """แฮนเดิลที่เก็บข้อความบันทึกลงในบัฟเฟอร์หน่วยความจำ"""
+
     def __init__(self, fmt: Optional[logging.Formatter] = None) -> None:
         super().__init__()
         if fmt is None:
@@ -15,6 +19,7 @@ class BufferHandler(logging.Handler):
         self.setFormatter(fmt)
 
     def emit(self, record: logging.LogRecord) -> None:
+        """เพิ่มข้อความบันทึกลงในบัฟเฟอร์"""
         try:
             msg = self.format(record)
             LOG_BUFFER.append(msg)

@@ -9,25 +9,25 @@ class Say(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot: commands.Bot = bot
 
-    @discord.app_commands.command(name="say", description="Say something anywhere.")
-    @app_commands.describe(message="The message the bot will send publicly.", channel_id="Optional channel ID to send the message to", amount="Number of times to send the message (default: 1)")
+    @discord.app_commands.command(name="say", description="พูดอะไรก็ได้ทุกที่")
+    @app_commands.describe(message="ข้อความที่บอทจะส่งแบบสาธารณะ", channel_id="ID ช่องที่ต้องการส่งข้อความไป (ไม่จำเป็น)", amount="จำนวนครั้งที่จะส่งข้อความ (ค่าเริ่มต้น: 1)")
     @discord.app_commands.allowed_installs(guilds=True, users=True)
     @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def say(self, interaction: discord.Interaction, message: str, channel_id: Optional[str] = None, amount: int = 1) -> None:
-        # Validate amount
+        # ตรวจสอบจำนวนครั้ง
         if amount < 1 or amount > 100:
-            await interaction.response.send_message("Amount must be between 1 and 100.", ephemeral=True)
+            await interaction.response.send_message("จำนวนต้องอยู่ระหว่าง 1 ถึง 100", ephemeral=True)
             return
 
-        # Build the full message with sender attribution
+        # สร้างข้อความเต็มพร้อมผู้ส่ง
         full_message = f"<@{interaction.user.id}> --> {message}"
 
-        # If a target channel_id was provided, try to send there (validate first)
+        # ถ้ามีการระบุ channel_id ให้ลองส่งไปที่ช่องนั้น
         if channel_id:
             try:
                 target_id = int(channel_id)
             except Exception:
-                await interaction.response.send_message("Invalid channel id provided.", ephemeral=True)
+                await interaction.response.send_message("รหัสช่องไม่ถูกต้อง", ephemeral=True)
                 return
 
             target = self.bot.get_channel(target_id)
@@ -38,24 +38,24 @@ class Say(commands.Cog):
                     target = None
 
             if target is None or not hasattr(target, 'send'):
-                await interaction.response.send_message("Could not find a sendable channel with that ID.", ephemeral=True)
+                await interaction.response.send_message("ไม่พบช่องที่สามารถส่งข้อความได้ด้วยรหัสนี้", ephemeral=True)
                 return
 
-            await interaction.response.send_message(f":white_check_mark: Message queued to target channel ({amount}x).", ephemeral=True)
+            await interaction.response.send_message(f"✅ ส่งข้อความไปยังช่องเป้าหมายแล้ว ({amount}x)", ephemeral=True)
 
             try:
                 for _ in range(amount):
                     await target.send(full_message, allowed_mentions=discord.AllowedMentions.none())
             except Exception:
                 try:
-                    await interaction.followup.send("Failed to send to target channel (missing permissions?).", ephemeral=True)
+                    await interaction.followup.send("ไม่สามารถส่งไปยังช่องเป้าหมาย (ไม่มีสิทธิ์?)", ephemeral=True)
                 except Exception:
                     pass
             return
 
-        # If the command is used in DM
+        # ถ้าใช้คำสั่งใน DM
         if isinstance(interaction.channel, discord.DMChannel):
-            await interaction.response.send_message(":white_check_mark: Message sent Successfully.", ephemeral=True)
+            await interaction.response.send_message("✅ ส่งข้อความสำเร็จ", ephemeral=True)
             try:
                 for _ in range(amount):
                     await interaction.followup.send(full_message, allowed_mentions=discord.AllowedMentions.none())
@@ -67,8 +67,8 @@ class Say(commands.Cog):
                     pass
             return
 
-        # If the command is in a guild (server)
-        await interaction.response.send_message("Success!", ephemeral=True)
+        # ถ้าใช้คำสั่งในเซิร์ฟเวอร์
+        await interaction.response.send_message("สำเร็จ!", ephemeral=True)
 
         try:
             for _ in range(amount):
@@ -79,27 +79,27 @@ class Say(commands.Cog):
                     await interaction.channel.send(full_message, allowed_mentions=discord.AllowedMentions.none())
             except Exception:
                 try:
-                    await interaction.followup.send("Failed to post message (missing permissions?)", ephemeral=True)
+                    await interaction.followup.send("ไม่สามารถโพสต์ข้อความ (ไม่มีสิทธิ์?)", ephemeral=True)
                 except Exception:
                     pass
 
-    @discord.app_commands.command(name="ys", description=".")
-    @app_commands.describe(message="The message the bot will send publicly.")
+    @discord.app_commands.command(name="ys", description="สั่งให้บอทพูด")
+    @app_commands.describe(message="ข้อความที่บอทจะส่งแบบสาธารณะ")
     @discord.app_commands.allowed_installs(guilds=True, users=True)
     @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def ys(self, interaction: discord.Interaction, message: str, channel_id: Optional[str] = None, amount: int = 1) -> None:
 
-        # Build the full message with sender attribution
+        # สร้างข้อความเต็ม
         full_message = f"{message}"
 
-        # If the command is used in DM
+        # ถ้าใช้คำสั่งใน DM
         if isinstance(interaction.channel, discord.DMChannel):
-            await interaction.response.send_message(":white_check_mark: Message sent Successfully.", ephemeral=True)
+            await interaction.response.send_message("✅ ส่งข้อความสำเร็จ", ephemeral=True)
             await interaction.followup.send(full_message)
 
-        # If the command is in a guild (server)
+        # ถ้าใช้คำสั่งในเซิร์ฟเวอร์
 
-            await interaction.response.send_message("Success!", ephemeral=True)
+            await interaction.response.send_message("สำเร็จ!", ephemeral=True)
             await interaction.followup.send(full_message)
 
 

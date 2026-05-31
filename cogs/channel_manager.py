@@ -14,6 +14,7 @@ SERVERS_FILE = DATA_DIR / "servers.json"
 
 
 def _load_data() -> dict:
+    # โหลดข้อมูลช่องทั้งหมดจากไฟล์ channels.json
     if CHANNELS_FILE.exists():
         with open(CHANNELS_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -21,12 +22,14 @@ def _load_data() -> dict:
 
 
 def _save_data(data: dict) -> None:
+    # สร้างโฟลเดอร์ data ถ้ายังไม่มี แล้วบันทึกข้อมูลช่องลงไฟล์
     DATA_DIR.mkdir(exist_ok=True)
     with open(CHANNELS_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
 
 
 def _load_server_config() -> dict:
+    # โหลดการตั้งค่าเซิร์ฟเวอร์จากไฟล์ servers.json
     if SERVERS_FILE.exists():
         with open(SERVERS_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -34,12 +37,14 @@ def _load_server_config() -> dict:
 
 
 def _save_server_config(config: dict) -> None:
+    # สร้างโฟลเดอร์ data ถ้ายังไม่มี แล้วบันทึกการตั้งค่าเซิร์ฟเวอร์ลงไฟล์
     DATA_DIR.mkdir(exist_ok=True)
     with open(SERVERS_FILE, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2)
 
 
 def _get_guild_config(guild_id: int) -> dict:
+    # ดึงการตั้งค่าสำหรับเซิร์ฟเวอร์ที่ระบุ
     config = _load_server_config()
     return config.get(str(guild_id), {})
 
@@ -48,6 +53,7 @@ DASHBOARD_TITLE = "🎛️  แดชบอร์ดช่อง"
 
 
 def _channel_info(channel_id: str, data: dict) -> dict:
+    # ดึงข้อมูลของช่องใดช่องหนึ่งจากข้อมูลทั้งหมด
     return data.get(str(channel_id), {})
 
 
@@ -56,6 +62,7 @@ def build_dashboard_embed(
     owner: discord.Member | discord.User,
     data: dict,
 ) -> discord.Embed:
+    # สร้าง Embed สำหรับแดชบอร์ดแสดงสถานะและปุ่มควบคุมต่าง ๆ
     info = _channel_info(channel.id, data)
 
     slowmode = channel.slowmode_delay
@@ -86,6 +93,7 @@ def build_dashboard_embed(
 
 
 class CreateChannelView(discord.ui.View):
+    # มุมมองที่มีปุ่ม "สร้างช่อง" แบบถาวร ใช้ custom_id เพื่อให้ทำงานหลังบอทรีสตาร์ท
     def __init__(self):
         super().__init__(timeout=None)
 
@@ -96,15 +104,18 @@ class CreateChannelView(discord.ui.View):
         emoji="✨",
     )
     async def create_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # เมื่อกดปุ่มให้สร้างช่องส่วนตัวให้ผู้ใช้
         await interaction.response.defer(ephemeral=True)
         await _create_channel_for_user(interaction, already_deferred=True)
 
 
 class DashboardView(discord.ui.View):
+    # มุมมองแดชบอร์ดที่มีปุ่มควบคุมช่องทั้งหมด ใช้ timeout=None เพื่อให้ถาวร
     def __init__(self):
         super().__init__(timeout=None)
 
     async def _is_owner(self, interaction: discord.Interaction) -> bool:
+        # ตรวจสอบว่าผู้ใช้ที่กดปุ่มเป็นเจ้าของช่องหรือไม่
         data = _load_data()
         info = data.get(str(interaction.channel_id), {})
         if info.get("owner_id") != interaction.user.id:
@@ -116,6 +127,7 @@ class DashboardView(discord.ui.View):
         return True
 
     async def _refresh(self, interaction: discord.Interaction) -> None:
+        # รีเฟรช Embed แดชบอร์ดให้แสดงข้อมูลล่าสุด
         data = _load_data()
         info = data.get(str(interaction.channel_id), {})
         guild = interaction.guild
@@ -125,18 +137,21 @@ class DashboardView(discord.ui.View):
 
     @discord.ui.button(label="✏️ เปลี่ยนชื่อ", style=discord.ButtonStyle.primary, custom_id="dash:rename", row=0)
     async def rename_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # เปิด Modal ให้เปลี่ยนชื่อช่อง
         if not await self._is_owner(interaction):
             return
         await interaction.response.send_modal(RenameModal())
 
     @discord.ui.button(label="📝 ตั้งหัวข้อ", style=discord.ButtonStyle.primary, custom_id="dash:topic", row=0)
     async def topic_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # เปิด Modal ให้ตั้งหัวข้อช่อง
         if not await self._is_owner(interaction):
             return
         await interaction.response.send_modal(TopicModal())
 
     @discord.ui.button(label="🔞 สลับ NSFW", style=discord.ButtonStyle.secondary, custom_id="dash:nsfw", row=0)
     async def nsfw_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # สลับสถานะ NSFW ของช่อง
         if not await self._is_owner(interaction):
             return
         channel = interaction.channel
@@ -148,24 +163,28 @@ class DashboardView(discord.ui.View):
 
     @discord.ui.button(label="👑 โอนสิทธิ์", style=discord.ButtonStyle.secondary, custom_id="dash:transfer", row=0)
     async def transfer_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # เปิด Modal ให้โอนความเป็นเจ้าของให้สมาชิกอื่น
         if not await self._is_owner(interaction):
             return
         await interaction.response.send_modal(TransferOwnerModal())
 
     @discord.ui.button(label="➕ เพิ่มสมาชิก", style=discord.ButtonStyle.success, custom_id="dash:add_member", row=1)
     async def add_member_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # เปิด Modal ให้เพิ่มสมาชิกเข้าช่อง
         if not await self._is_owner(interaction):
             return
         await interaction.response.send_modal(AddMemberModal())
 
     @discord.ui.button(label="➖ ลบสมาชิก", style=discord.ButtonStyle.danger, custom_id="dash:rm_member", row=1)
     async def remove_member_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # เปิด Modal ให้ลบสมาชิกออกจากช่อง
         if not await self._is_owner(interaction):
             return
         await interaction.response.send_modal(RemoveMemberModal())
 
     @discord.ui.button(label="🔓 เปิดสาธารณะ", style=discord.ButtonStyle.secondary, custom_id="dash:visibility", row=1)
     async def toggle_visibility_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # สลับการมองเห็นช่องระหว่างสาธารณะและส่วนตัว
         if not await self._is_owner(interaction):
             return
 
@@ -177,6 +196,7 @@ class DashboardView(discord.ui.View):
         default_role = interaction.guild.default_role
 
         if currently_private:
+            # เปลี่ยนเป็นสาธารณะ: ทุกคนดูช่องได้แต่ส่งข้อความไม่ได้
             overwrites[default_role] = discord.PermissionOverwrite(
                 view_channel=True,
                 send_messages=False,
@@ -185,6 +205,7 @@ class DashboardView(discord.ui.View):
             info["visibility"] = "Public"
             label = "🔒 ตั้งเป็นส่วนตัว"
         else:
+            # เปลี่ยนเป็นส่วนตัว: มีแต่สมาชิกที่ถูกเพิ่มเท่านั้นที่เห็น
             overwrites[default_role] = discord.PermissionOverwrite(
                 view_channel=False,
                 send_messages=False,
@@ -208,6 +229,7 @@ class DashboardView(discord.ui.View):
         placeholder="🐢 ตั้งค่าสโลว์โหมด...",
         custom_id="dash:slowmode",
         row=2,
+        # ตัวเลือกความถี่สโลว์โหมด ตั้งแต่ปิดจนถึง 30 นาที
         options=[
             discord.SelectOption(label="ปิด", value="0"),
             discord.SelectOption(label="5 วินาที", value="5"),
@@ -220,6 +242,7 @@ class DashboardView(discord.ui.View):
         ],
     )
     async def slowmode_select(self, interaction: discord.Interaction, select: discord.ui.Select):
+        # เปลี่ยนค่าสโลว์โหมดตามที่เลือกจาก Select Menu
         if not await self._is_owner(interaction):
             return
         delay = int(select.values[0])
@@ -232,12 +255,14 @@ class DashboardView(discord.ui.View):
 
     @discord.ui.button(label="🧹 ลบข้อความ", style=discord.ButtonStyle.danger, custom_id="dash:purge", row=3)
     async def purge_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # เปิด Modal ให้ลบข้อความจำนวนมากในช่อง
         if not await self._is_owner(interaction):
             return
         await interaction.response.send_modal(PurgeModal())
 
     @discord.ui.button(label="🗑️ ลบช่อง", style=discord.ButtonStyle.danger, custom_id="dash:delete", row=3)
     async def delete_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # แสดงปุ่มยืนยันก่อนลบช่อง
         if not await self._is_owner(interaction):
             return
         view = ConfirmDeleteView()
@@ -249,12 +274,14 @@ class DashboardView(discord.ui.View):
 
     @discord.ui.button(label="🔄 รีเฟรช", style=discord.ButtonStyle.secondary, custom_id="dash:refresh", row=4)
     async def refresh_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # รีเฟรชแดชบอร์ดให้แสดงข้อมูลล่าสุด
         await interaction.response.defer(ephemeral=True)
         await self._refresh(interaction)
         await interaction.followup.send("รีเฟรชแดชบอร์ดแล้ว! ✅", ephemeral=True)
 
 
 class RenameModal(discord.ui.Modal, title="เปลี่ยนชื่อช่อง"):
+    # Modal สำหรับเปลี่ยนชื่อช่อง
     new_name = discord.ui.TextInput(
         label="ชื่อช่องใหม่",
         placeholder="ช่อง-สุดเจ๋ง",
@@ -262,6 +289,7 @@ class RenameModal(discord.ui.Modal, title="เปลี่ยนชื่อช�
     )
 
     async def on_submit(self, interaction: discord.Interaction):
+        # เปลี่ยนชื่อช่องและอัปเดต Embed แดชบอร์ดที่ปักหมุด
         await interaction.channel.edit(name=self.new_name.value)
         await interaction.response.send_message(
             f"✅ เปลี่ยนชื่อช่องเป็น **#{self.new_name.value}** แล้ว", ephemeral=True
@@ -278,6 +306,7 @@ class RenameModal(discord.ui.Modal, title="เปลี่ยนชื่อช�
 
 
 class TopicModal(discord.ui.Modal, title="ตั้งหัวข้อช่อง"):
+    # Modal สำหรับตั้งหัวข้อช่อง
     topic = discord.ui.TextInput(
         label="หัวข้อช่อง",
         style=discord.TextStyle.paragraph,
@@ -287,6 +316,7 @@ class TopicModal(discord.ui.Modal, title="ตั้งหัวข้อช่�
     )
 
     async def on_submit(self, interaction: discord.Interaction):
+        # ตั้งหัวข้อช่องและอัปเดต Embed แดชบอร์ดที่ปักหมุด
         await interaction.channel.edit(topic=self.topic.value or None)
         await interaction.response.send_message(
             "✅ อัปเดตหัวข้อแล้ว", ephemeral=True
@@ -303,6 +333,7 @@ class TopicModal(discord.ui.Modal, title="ตั้งหัวข้อช่�
 
 
 class AddMemberModal(discord.ui.Modal, title="เพิ่มสมาชิก"):
+    # Modal สำหรับเพิ่มสมาชิกเข้าช่อง
     member_input = discord.ui.TextInput(
         label="User ID หรือ @mention",
         placeholder="123456789012345678",
@@ -310,6 +341,7 @@ class AddMemberModal(discord.ui.Modal, title="เพิ่มสมาชิก"
     )
 
     async def on_submit(self, interaction: discord.Interaction):
+        # ดึง ID หรือ mention แล้วเพิ่มสิทธิ์ให้สมาชิกนั้น
         raw = self.member_input.value.strip().strip("<@!>")
         try:
             member = interaction.guild.get_member(int(raw))
@@ -340,6 +372,7 @@ class AddMemberModal(discord.ui.Modal, title="เพิ่มสมาชิก"
 
 
 class RemoveMemberModal(discord.ui.Modal, title="ลบสมาชิก"):
+    # Modal สำหรับลบสมาชิกออกจากช่อง
     member_input = discord.ui.TextInput(
         label="User ID หรือ @mention",
         placeholder="123456789012345678",
@@ -347,6 +380,7 @@ class RemoveMemberModal(discord.ui.Modal, title="ลบสมาชิก"):
     )
 
     async def on_submit(self, interaction: discord.Interaction):
+        # ดึง ID หรือ mention แล้วลบสิทธิ์ของสมาชิกนั้นออก
         raw = self.member_input.value.strip().strip("<@!>")
         try:
             member = interaction.guild.get_member(int(raw))
@@ -358,10 +392,12 @@ class RemoveMemberModal(discord.ui.Modal, title="ลบสมาชิก"):
 
         data = _load_data()
         info = data.get(str(interaction.channel_id), {})
+        # ป้องกันการลบเจ้าของช่อง
         if member.id == info.get("owner_id"):
             await interaction.response.send_message("❌ ไม่สามารถลบเจ้าของช่องได้", ephemeral=True)
             return
 
+        # ลบ Overwrite ของสมาชิกนั้นออก
         await interaction.channel.set_permissions(member, overwrite=None)
         await interaction.response.send_message(
             f"✅ ลบ {member.mention} ออกจากช่องแล้ว", ephemeral=True
@@ -376,6 +412,7 @@ class RemoveMemberModal(discord.ui.Modal, title="ลบสมาชิก"):
 
 
 class TransferOwnerModal(discord.ui.Modal, title="โอนความเป็นเจ้าของ"):
+    # Modal สำหรับโอนความเป็นเจ้าของช่องให้สมาชิกอื่น
     member_input = discord.ui.TextInput(
         label="User ID ของเจ้าของคนใหม่",
         placeholder="123456789012345678",
@@ -383,6 +420,7 @@ class TransferOwnerModal(discord.ui.Modal, title="โอนความเป็
     )
 
     async def on_submit(self, interaction: discord.Interaction):
+        # ดึง ID หรือ mention แล้วเปลี่ยนเจ้าของช่อง
         raw = self.member_input.value.strip().strip("<@!>")
         try:
             member = interaction.guild.get_member(int(raw))
@@ -394,10 +432,12 @@ class TransferOwnerModal(discord.ui.Modal, title="โอนความเป็
 
         data = _load_data()
         info = data.get(str(interaction.channel_id), {})
+        # อัปเดต owner_id ในข้อมูล
         info["owner_id"] = member.id
         data[str(interaction.channel_id)] = info
         _save_data(data)
 
+        # ให้สิทธิ์จัดการช่องกับเจ้าของคนใหม่
         await interaction.channel.set_permissions(
             member,
             view_channel=True,
@@ -419,6 +459,7 @@ class TransferOwnerModal(discord.ui.Modal, title="โอนความเป็
 
 
 class PurgeModal(discord.ui.Modal, title="ลบข้อความจำนวนมาก"):
+    # Modal สำหรับลบข้อความจำนวนมากในช่อง
     amount = discord.ui.TextInput(
         label="จำนวนข้อความที่ต้องการลบ",
         placeholder="50",
@@ -426,6 +467,7 @@ class PurgeModal(discord.ui.Modal, title="ลบข้อความจำน�
     )
 
     async def on_submit(self, interaction: discord.Interaction):
+        # ตรวจสอบค่าที่กรอกแล้วลบข้อความตามจำนวน
         try:
             count = int(self.amount.value)
             if count < 1 or count > 1000:
@@ -441,6 +483,7 @@ class PurgeModal(discord.ui.Modal, title="ลบข้อความจำน�
         data = _load_data()
         info = data.get(str(interaction.channel_id), {})
         pins = await interaction.channel.pins()
+        # ตรวจสอบว่าแดชบอร์ดยังปักหมุดอยู่หรือไม่ ถ้าไม่ให้ส่งใหม่
         dashboard_exists = any(
             m.author == interaction.client.user and m.embeds and m.embeds[0].title == DASHBOARD_TITLE
             for m in pins
@@ -454,11 +497,13 @@ class PurgeModal(discord.ui.Modal, title="ลบข้อความจำน�
 
 
 class ConfirmDeleteView(discord.ui.View):
+    # มุมมองยืนยันการลบช่อง มีปุ่มยืนยันและยกเลิก
     def __init__(self):
         super().__init__(timeout=30)
 
     @discord.ui.button(label="ใช่ ลบเลย", style=discord.ButtonStyle.danger)
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # ลบข้อมูลช่องออกจากไฟล์แล้วลบช่องทิ้ง
         data = _load_data()
         channel_id = str(interaction.channel_id)
         if channel_id in data:
@@ -471,6 +516,7 @@ class ConfirmDeleteView(discord.ui.View):
 
     @discord.ui.button(label="ยกเลิก", style=discord.ButtonStyle.secondary)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # ยกเลิกและปิด View
         await interaction.response.send_message("ยกเลิกแล้ว ✅", ephemeral=True)
         self.stop()
 
@@ -480,6 +526,7 @@ async def _create_channel_for_user(
     *,
     already_deferred: bool = False,
 ) -> None:
+    # ฟังก์ชันหลักสำหรับสร้างช่องส่วนตัวให้ผู้ใช้
     guild = interaction.guild
     if guild is None:
         if not already_deferred:
@@ -491,6 +538,7 @@ async def _create_channel_for_user(
     if not already_deferred:
         await interaction.response.defer(ephemeral=True)
 
+    # ดึงการตั้งค่าเซิร์ฟเวอร์เพื่อหาหมวดหมู่ที่กำหนด
     guild_config = _get_guild_config(guild.id)
     category_id = guild_config.get("category_id")
     category = None
@@ -499,6 +547,7 @@ async def _create_channel_for_user(
 
     channel_name = f"ช่องของ{interaction.user.display_name}"
 
+    # ตั้งค่า Overwrite: ซ่อนจากทุกคน ให้สิทธิ์เจ้าของและบอท
     overwrites = {
         guild.default_role: discord.PermissionOverwrite(
             view_channel=False,
@@ -528,6 +577,7 @@ async def _create_channel_for_user(
         category=category,
     )
 
+    # บันทึกข้อมูลช่องลงไฟล์
     data = _load_data()
     data[str(channel.id)] = {
         "owner_id": interaction.user.id,
@@ -535,11 +585,13 @@ async def _create_channel_for_user(
     }
     _save_data(data)
 
+    # ส่งแดชบอร์ดไปในช่องใหม่และปักหมุด
     embed = build_dashboard_embed(channel, interaction.user, data)
     view = DashboardView()
     dashboard_msg = await channel.send(embed=embed, view=view)
     await dashboard_msg.pin()
 
+    # ส่ง DM แจ้งเตือนผู้ใช้ ถ้าบอทถูกบล็อค DM ก็ข้ามไป
     try:
         dm_embed = discord.Embed(
             title="🎉 สร้างช่องใหม่สำเร็จ!",
@@ -559,6 +611,7 @@ async def _create_channel_for_user(
         f"✅ สร้างช่อง {channel.mention} แล้ว! คุณเป็นเจ้าของ",
         ephemeral=True,
     )
+    # ลบข้อความตอบกลับหลังจาก 5 วินาที
     await asyncio.sleep(5)
     try:
         await msg.delete()
@@ -567,11 +620,13 @@ async def _create_channel_for_user(
 
 
 class ChannelManager(commands.Cog):
+    # Cog หลักสำหรับจัดการระบบช่องส่วนตัว
     def __init__(self, bot):
         self.bot = bot
 
     @app_commands.command(name="create", description="สร้างช่องส่วนตัวใหม่ที่คุณเป็นเจ้าของ")
     async def create_channel(self, interaction: discord.Interaction):
+        # คำสั่งสร้างช่องส่วนตัว Slash Command
         await _create_channel_for_user(interaction)
 
     @app_commands.command(name="setup", description="ตั้งค่าระบบสร้างช่อง (สำหรับแอดมิน)")
@@ -586,6 +641,7 @@ class ChannelManager(commands.Cog):
         category: discord.CategoryChannel,
         button_channel: discord.TextChannel,
     ):
+        # คำสั่งตั้งค่าระบบสำหรับแอดมิน กำหนดหมวดหมู่และช่องปุ่มสร้าง
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message("คำสั่งนี้ใช้ได้เฉพาะในเซิร์ฟเวอร์เท่านั้น", ephemeral=True)
@@ -593,6 +649,7 @@ class ChannelManager(commands.Cog):
 
         await interaction.response.defer(ephemeral=True)
 
+        # บันทึกการตั้งค่าเซิร์ฟเวอร์
         config = _load_server_config()
         config[str(guild.id)] = {
             "category_id": category.id,
@@ -600,6 +657,7 @@ class ChannelManager(commands.Cog):
         }
         _save_server_config(config)
 
+        # ส่ง Embed พร้อมปุ่มสร้างช่องไปยังช่องที่กำหนด
         create_embed = discord.Embed(
             title="✨ สร้างช่องส่วนตัวของคุณ",
             description=(
@@ -625,6 +683,7 @@ class ChannelManager(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
+        # เมื่อช่องถูกลบ ให้ลบข้อมูลออกจากไฟล์ด้วย
         data = _load_data()
         cid = str(channel.id)
         if cid in data:
@@ -632,6 +691,7 @@ class ChannelManager(commands.Cog):
             _save_data(data)
 
     async def cog_load(self):
+        # เมื่อ Cog โหลด ให้ลงทะเบียน View แบบถาวรเพื่อให้รับ Interaction ต่อเนื่องได้
         self.bot.add_view(DashboardView())
         self.bot.add_view(CreateChannelView())
 

@@ -17,7 +17,7 @@ from PIL import Image
 LOGO_PATH: str = "promptpay_logo.png" 
 
 # =========================
-# 🛠️ PROMPTPAY & IMAGE LOGIC
+# 🛠️ ตรรกะ PROMPTPAY และรูปภาพ
 # =========================
 
 def crc16(data: bytes):
@@ -40,7 +40,7 @@ def generate_payload(pp_number, amount=0.0):
     elif len(target) == 13:
         target_type = "TAXID"
     else:
-        raise ValueError("Invalid PromptPay ID")
+        raise ValueError("ไม่พบ PromptPay ID ที่ถูกต้อง")
 
     p_method = "12" if amount > 0 else "11"
     payload = [tlv("00", "01"), tlv("01", p_method)]
@@ -97,10 +97,10 @@ async def send_qr_log(bot, embed, file=None):
             if channel:
                 await channel.send(embed=embed, file=file)
     except Exception as e:
-        print(f"Error sending QR log: {e}")
+        print(f"ข้อผิดพลาดในการส่ง QR log: {e}")
 
 # =========================
-# 💾 PAYMENT TRACKING & LOGGING
+# 💾 การติดตามการชำระเงินและบันทึก
 # =========================
 
 PAYMENT_LOG_FILE = "payment_history.json"
@@ -127,7 +127,7 @@ def save_payment_history(history):
         with open(PAYMENT_LOG_FILE, 'w', encoding='utf-8') as f:
             json.dump(history, f, ensure_ascii=False, indent=2)
     except Exception as e:
-        print(f"Error saving payment history: {e}")
+        print(f"ข้อผิดพลาดในการบันทึกประวัติการชำระเงิน: {e}")
 
 def create_payment_record(ref_id, user_id, user_name, account, amount, payment_type="regular"):
     """สร้างบันทึกการชำระเงิน"""
@@ -174,14 +174,14 @@ async def send_payment_log(bot, embed):
             if channel:
                 await channel.send(embed=embed)
     except Exception as e:
-        print(f"Error sending payment log: {e}")
+        print(f"ข้อผิดพลาดในการส่ง payment log: {e}")
 
 def build_embed(user, pp, amount, status="⏳ รอตรวจสอบ"):
     masked = f"{pp[:3]}-xxx-{pp[-4:]}" if len(pp) >= 10 else pp
     now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     embed = discord.Embed(title="💳 PromptPay QR Payment", color=0xCCCCFF)
     embed.description = f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n**ผู้รับเงิน:** `{masked}`"
-    embed.set_author(name=f"Requested by {user.display_name}", icon_url=user.display_avatar.url)
+    embed.set_author(name=f"ร้องขอโดย {user.display_name}", icon_url=user.display_avatar.url)
     amt_text = f"**฿ {amount:,.2f}**" if amount > 0 else "*- ระบุยอดเงินเอง -*"
     embed.add_field(name="💰 จำนวนเงิน", value=amt_text, inline=False)
     embed.add_field(name="📊 สถานะ", value=status, inline=False)
@@ -190,7 +190,7 @@ def build_embed(user, pp, amount, status="⏳ รอตรวจสอบ"):
     return embed
 
 # =========================
-# 🕹️ VIEWS & FLOW
+# 🕹️ VIEWS และขั้นตอน
 # =========================
 
 class QRView(discord.ui.View):
@@ -406,7 +406,7 @@ class LendAccountSelectView(discord.ui.View):
         await interaction.response.send_message(embed=embed, file=file, ephemeral=False, view=QRView(self.user, ref_id, self.bot))
         # ส่งไปยัง logging channel
         await send_qr_log(self.bot, embed, file)
-        # Remove the selector message after sending QR
+        # ลบข้อความ selector หลังจากส่ง QR
         await asyncio.sleep(0.5)
         await interaction.message.delete()
 
@@ -533,7 +533,7 @@ class MainChoiceView(discord.ui.View):
         await close_session(interaction)
 
 # =========================
-# ⚙️ COG SETUP
+# ⚙️ การตั้งค่า COG
 # =========================
 
 class PaymentWizard(commands.Cog):
@@ -555,7 +555,7 @@ class PaymentWizard(commands.Cog):
 
     @commands.command(name="pp", description="สร้าง QR Code (ส่งแบบสาธารณะในขั้นตอนสุดท้าย)")
     async def promptpay_prefix(self, ctx: commands.Context):
-        """Prefix command version of /pp"""
+        """คำสั่ง prefix ของ /pp"""
         if not self.accounts: return await ctx.send("❌ ไม่พบการตั้งค่าบัญชี")
         view = MainChoiceView(self.accounts, ctx.author, self.bot)
         await ctx.send(content="💳 **PromptPay QR Wizard**", view=view)

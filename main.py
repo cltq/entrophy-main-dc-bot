@@ -41,7 +41,7 @@ try:
     buf = BufferHandler()
     logger.addHandler(buf)
 except Exception:
-    logger.exception("Failed to attach BufferHandler")
+    logger.exception("แนบ BufferHandler ไม่สำเร็จ")
 
 try:
     os.makedirs(os.path.join(os.getcwd(), "logs"), exist_ok=True)
@@ -55,7 +55,7 @@ try:
     file_handler.setFormatter(AdvancedFormatter())
     logger.addHandler(file_handler)
 except Exception:
-    logger.exception("Failed to attach file handler")
+    logger.exception("แนบ file handler ไม่สำเร็จ")
 
 
 async def attach_discord_logger() -> None:
@@ -69,10 +69,10 @@ async def attach_discord_logger() -> None:
         try:
             await discord_handler.start()
         except Exception:
-            logger.exception("Failed to start DiscordHandler task")
-        logger.info("DiscordHandler attached")
+            logger.exception("เริ่ม DiscordHandler ไม่สำเร็จ")
+        logger.info("DiscordHandler แนบเรียบร้อย")
     except Exception:
-        logger.exception("Failed to attach DiscordHandler")
+        logger.exception("แนบ DiscordHandler ไม่สำเร็จ")
 
 
 original_setup: Optional[Any] = getattr(bot, "setup_hook", None)
@@ -87,7 +87,7 @@ bot.setup_hook = combined_setup
 
 @bot.event
 async def on_ready() -> None:
-    log_event(logger, "Bot Ready", f"Logged in as {bot.user} (ID: {bot.user.id})")
+    log_event(logger, "Bot พร้อมทำงาน", f"ล็อกอินเป็น {bot.user} (ID: {bot.user.id})")
     await sync_slash_commands()
 
 
@@ -115,42 +115,42 @@ async def on_command_error(ctx: commands.Context, error: commands.CommandError) 
     elif isinstance(error, commands.MissingPermissions):
         log_error(
             logger, "PermissionError",
-            f"{ctx.author} tried to use {ctx.command.name} without permissions",
+            f"{ctx.author} พยายามใช้ {ctx.command.name} โดยไม่มีสิทธิ์",
             user=ctx.author, command=ctx.command.name,
             channel=ctx.channel, guild=ctx.guild
         )
-        await ctx.send("⚠️ You lack permissions to use this command.")
+        await ctx.send("⚠️ คุณไม่มีสิทธิ์ใช้คำสั่งนี้")
     elif isinstance(error, commands.NotOwner):
         log_error(
             logger, "OwnerOnly",
-            f"{ctx.author} tried to use owner-only command: {ctx.command.name}",
+            f"{ctx.author} พยายามใช้คำสั่งเฉพาะเจ้าของ: {ctx.command.name}",
             user=ctx.author, command=ctx.command.name,
             channel=ctx.channel, guild=ctx.guild
         )
-        await ctx.send("❌ This command is restricted to the bot owner.")
+        await ctx.send("❌ คำสั่งนี้สงวนไว้สำหรับเจ้าของบอทเท่านั้น")
     else:
         log_error(
             logger, "CommandError",
-            f"Error in {ctx.command.name}: {error}",
+            f"ข้อผิดพลาดใน {ctx.command.name}: {error}",
             user=ctx.author, command=ctx.command.name,
             channel=ctx.channel, guild=ctx.guild, exc_info=True
         )
-        await ctx.send(f"❌ Error: `{error}`")
+        await ctx.send(f"❌ ข้อผิดพลาด: `{error}`")
         raise error
 
 
 async def sync_slash_commands() -> None:
     synced: list[app_commands.Command] = await bot.tree.sync()
-    log_event(logger, "SlashCommandsSync", f"Synced {len(synced)} slash commands")
+    log_event(logger, "ซิงค์คำสั่ง Slash", f"ซิงค์คำสั่ง Slash จำนวน {len(synced)} คำสั่ง")
 
     try:
         for cmd in bot.tree.get_commands():
             guilds = getattr(cmd, "guilds", None)
             if guilds:
                 ids: list[Any] = [getattr(g, "id", g) for g in guilds]
-                logger.verbose(f"Slash command {cmd.name}: guild-only -> {ids}")
+                logger.verbose(f"คำสั่ง Slash {cmd.name}: เฉพาะเซิร์ฟเวอร์ -> {ids}")
             else:
-                logger.verbose(f"Slash command {cmd.name}: global")
+                logger.verbose(f"คำสั่ง Slash {cmd.name}: ทั่วโลก")
     except Exception:
         pass
 
@@ -160,9 +160,9 @@ async def load_cogs() -> None:
         if filename.endswith(".py") and not filename.startswith("_"):
             try:
                 await bot.load_extension(f"cogs.{filename[:-3]}")
-                logger.info(f"📦 Loaded cog: {filename[:-3]}")
+                logger.info(f"📦 โหลด cog: {filename[:-3]}")
             except Exception:
-                logger.exception(f"Failed to load cog: {filename[:-3]}")
+                logger.exception(f"โหลด cog ไม่สำเร็จ: {filename[:-3]}")
 
 
 async def main() -> None:
@@ -176,7 +176,7 @@ if __name__ == "__main__":
         from keep_alive import keep_alive
         if os.getenv("KEEP_ALIVE", "false").lower() in ("1", "true", "yes"):
             keep_alive()
-            logger.info("keep_alive enabled")
+            logger.info("เปิด keep_alive แล้ว")
     except ImportError:
         pass
 

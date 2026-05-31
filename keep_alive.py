@@ -5,7 +5,7 @@ import datetime
 
 app = Flask(__name__, static_folder=None)
 
-# Paths to the dashboard static files
+# เส้นทางไปยังไฟล์ static ของแดชบอร์ด
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DASH_STATIC = os.path.join(BASE_DIR, 'dashboard', 'static')
 LOG_FILE = os.path.join(BASE_DIR, 'logs', 'entrophy.log')
@@ -13,31 +13,31 @@ LOG_FILE = os.path.join(BASE_DIR, 'logs', 'entrophy.log')
 
 @app.route('/')
 def home():
-    """Serve the dashboard main page (index.html)."""
+    """แสดงหน้าแรกของแดชบอร์ด (index.html)"""
     index_path = os.path.join(DASH_STATIC, 'index.html')
     if os.path.exists(index_path):
         return send_file(index_path)
-    return "Dashboard not built", 404
+    return "ไม่ได้สร้างแดชบอร์ด", 404
 
 
 @app.route('/log')
 def logs_page():
-    """Serve the full logs page (logs.html)."""
+    """แสดงหน้า Logs (logs.html)"""
     logs_path = os.path.join(DASH_STATIC, 'logs.html')
     if os.path.exists(logs_path):
         return send_file(logs_path)
-    return "Logs page not found", 404
+    return "ไม่พบหน้า Logs", 404
 
 
 @app.route('/static/<path:filename>')
 def static_files(filename):
-    """Serve static assets for the dashboard."""
+    """ให้บริการไฟล์ static ของแดชบอร์ด"""
     return send_from_directory(DASH_STATIC, filename)
 
 
 @app.route('/status')
 def status():
-    """Return a simple JSON status and a few recent log lines for quick checks."""
+    """คืนค่า JSON สถานะและ log ล่าสุดสองสามบรรทัดเพื่อตรวจสอบอย่างรวดเร็ว"""
     now = datetime.datetime.utcnow().isoformat() + 'Z'
     recent = []
     try:
@@ -56,10 +56,10 @@ def status():
 
 
 def run():
-    # Bind to the PORT env var if present (Render uses $PORT)
+    # ใช้ PORT จาก environment variable ถ้ามี (Render ใช้ $PORT)
     port = int(os.getenv('PORT', '8080'))
     host = os.getenv('KEEPALIVE_HOST', '0.0.0.0')
-    # Flask in Render should use 0.0.0.0 and the provided PORT
+    # Flask บน Render ควรใช้ 0.0.0.0 และ PORT ที่ให้มา
     app.run(host=host, port=port)
 
 

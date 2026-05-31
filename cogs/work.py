@@ -23,7 +23,7 @@ QWERTY_TO_THAI_MAP: dict[str, str] = {
 
 
 def qwerty_to_thai_text(text: str) -> str:
-    """Convert a string typed on QWERTY to Thai keyboard characters."""
+    """แปลงข้อความที่พิมพ์ด้วย QWERTY เป็นตัวอักษรไทย"""
     result_chars = []
     for char in text:
         lower = char.lower()
@@ -36,7 +36,7 @@ def qwerty_to_thai_text(text: str) -> str:
 
 
 def convert_to_thai(text: str) -> str:
-    """Alias for QWERTY->Thai conversion."""
+    """นามแฝงสำหรับการแปลง QWERTY->ไทย"""
     return qwerty_to_thai_text(text)
 
 
@@ -81,24 +81,24 @@ def is_likely_mistyped_thai(text: str) -> bool:
 
 
 class TodoListView(discord.ui.View):
-    """Interactive view for todo list management"""
+    """มุมมองโต้ตอบสำหรับจัดการรายการสิ่งที่ต้องทำ"""
     def __init__(self, user_id: int, todos: list[dict], context: Any) -> None:
         super().__init__(timeout=300)
         self.user_id = user_id
         self.todos = todos
         self.context = context
 
-    @discord.ui.button(label="✅ Mark Complete", style=discord.ButtonStyle.green)
+    @discord.ui.button(label="✅ ทำเสร็จแล้ว", style=discord.ButtonStyle.green)
     async def mark_complete(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.user_id:
-            await interaction.response.send_message("❌ You can't interact with this!", ephemeral=True)
+            await interaction.response.send_message("❌ คุณไม่สามารถโต้ตอบกับสิ่งนี้ได้!", ephemeral=True)
             return
         
         if not self.todos:
-            await interaction.response.send_message("❌ No todos to complete!", ephemeral=True)
+            await interaction.response.send_message("❌ ไม่มีรายการที่ต้องทำ!", ephemeral=True)
             return
 
-        # Create a select menu for choosing which todo to mark complete
+        # สร้างเมนูเลือกเพื่อเลือกรายการที่ทำเสร็จ
         options = [
             discord.SelectOption(
                 label=todo['text'][:100],
@@ -114,12 +114,12 @@ class TodoListView(discord.ui.View):
                 self.parent = parent
 
             @discord.ui.select(
-                placeholder="Select a todo to mark complete...",
+                placeholder="เลือกรายการที่ทำเสร็จ...",
                 options=options[:25]  # Discord limit
             )
             async def select_todo(self, select_interaction: discord.Interaction, select: discord.ui.Select):
                 if select_interaction.user.id != self.parent.user_id:
-                    await select_interaction.response.send_message("❌ Not your list!", ephemeral=True)
+                    await select_interaction.response.send_message("❌ ไม่ใช่รายการของคุณ!", ephemeral=True)
                     return
 
                 idx = int(select.values[0])
@@ -128,21 +128,21 @@ class TodoListView(discord.ui.View):
                 save_user_data(self.parent.user_id, self.parent.todos)
                 
                 await select_interaction.response.send_message(
-                    f"✅ Marked **{self.parent.todos[idx]['text']}** as complete!",
+                    f"✅ ทำเครื่องหมาย **{self.parent.todos[idx]['text']}** ว่าเสร็จแล้ว!",
                     ephemeral=True
                 )
 
         view = CompleteSelect(self)
-        await interaction.response.send_message("Select a todo to mark complete:", view=view, ephemeral=True)
+        await interaction.response.send_message("เลือกรายการที่ทำเสร็จ:", view=view, ephemeral=True)
 
-    @discord.ui.button(label="🗑️ Delete", style=discord.ButtonStyle.red)
+    @discord.ui.button(label="🗑️ ลบ", style=discord.ButtonStyle.red)
     async def delete_todo(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.user_id:
-            await interaction.response.send_message("❌ You can't interact with this!", ephemeral=True)
+            await interaction.response.send_message("❌ คุณไม่สามารถโต้ตอบกับสิ่งนี้ได้!", ephemeral=True)
             return
         
         if not self.todos:
-            await interaction.response.send_message("❌ No todos to delete!", ephemeral=True)
+            await interaction.response.send_message("❌ ไม่มีรายการที่ต้องลบ!", ephemeral=True)
             return
 
         options = [
@@ -160,12 +160,12 @@ class TodoListView(discord.ui.View):
                 self.parent = parent
 
             @discord.ui.select(
-                placeholder="Select a todo to delete...",
+                placeholder="เลือกรายการที่จะลบ...",
                 options=options[:25]
             )
             async def select_delete(self, select_interaction: discord.Interaction, select: discord.ui.Select):
                 if select_interaction.user.id != self.parent.user_id:
-                    await select_interaction.response.send_message("❌ Not your list!", ephemeral=True)
+                    await select_interaction.response.send_message("❌ ไม่ใช่รายการของคุณ!", ephemeral=True)
                     return
 
                 idx = int(select.values[0])
@@ -174,17 +174,17 @@ class TodoListView(discord.ui.View):
                 save_user_data(self.parent.user_id, self.parent.todos)
                 
                 await select_interaction.response.send_message(
-                    f"🗑️ Deleted **{deleted_text}**!",
+                    f"🗑️ ลบ **{deleted_text}** แล้ว!",
                     ephemeral=True
                 )
 
         view = DeleteSelect(self)
-        await interaction.response.send_message("Select a todo to delete:", view=view, ephemeral=True)
+        await interaction.response.send_message("เลือกรายการที่จะลบ:", view=view, ephemeral=True)
 
-    @discord.ui.button(label="📋 View All", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="📋 ดูทั้งหมด", style=discord.ButtonStyle.blurple)
     async def view_all(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.user_id:
-            await interaction.response.send_message("❌ You can't interact with this!", ephemeral=True)
+            await interaction.response.send_message("❌ คุณไม่สามารถโต้ตอบกับสิ่งนี้ได้!", ephemeral=True)
             return
 
         embed = create_todo_embed(self.todos, self.user_id)
@@ -192,21 +192,21 @@ class TodoListView(discord.ui.View):
 
 
 class NotesView(discord.ui.View):
-    """Interactive view for notes management"""
+    """มุมมองโต้ตอบสำหรับจัดการบันทึก"""
     def __init__(self, user_id: int, notes: list[dict], context: Any) -> None:
         super().__init__(timeout=300)
         self.user_id = user_id
         self.notes = notes
         self.context = context
 
-    @discord.ui.button(label="📝 View Note", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="📝 ดูบันทึก", style=discord.ButtonStyle.blurple)
     async def view_note(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.user_id:
-            await interaction.response.send_message("❌ Not your notes!", ephemeral=True)
+            await interaction.response.send_message("❌ ไม่ใช่บันทึกของคุณ!", ephemeral=True)
             return
 
         if not self.notes:
-            await interaction.response.send_message("❌ No notes found!", ephemeral=True)
+            await interaction.response.send_message("❌ ไม่พบบันทึก!", ephemeral=True)
             return
 
         options = [
@@ -224,12 +224,12 @@ class NotesView(discord.ui.View):
                 self.parent = parent
 
             @discord.ui.select(
-                placeholder="Select a note to view...",
+                placeholder="เลือกบันทึกที่จะดู...",
                 options=options[:25]
             )
             async def select_note(self, select_interaction: discord.Interaction, select: discord.ui.Select):
                 if select_interaction.user.id != self.parent.user_id:
-                    await select_interaction.response.send_message("❌ Not your notes!", ephemeral=True)
+                    await select_interaction.response.send_message("❌ ไม่ใช่บันทึกของคุณ!", ephemeral=True)
                     return
 
                 idx = int(select.values[0])
@@ -241,34 +241,33 @@ class NotesView(discord.ui.View):
                     color=discord.Color.gold(),
                     timestamp=datetime.fromisoformat(note['created_at'])
                 )
-                embed.set_footer(text="Created at")
+                embed.set_footer(text="สร้างเมื่อ")
                 
-                # Display attachments if available with clickable links
+                # แสดงไฟล์แนบถ้ามีพร้อมลิงก์ที่คลิกได้
                 if note.get('attachments'):
                     attachment_links = []
                     for att in note['attachments']:
-                        # Create clickable links with the filename
                         file_size = att.get('size', 0)
                         size_str = f"{file_size / 1024 / 1024:.2f}MB" if file_size > 1024 * 1024 else f"{file_size / 1024:.2f}KB"
                         link = f"[📎 {att['filename']}]({att['url']}) ({size_str})"
                         attachment_links.append(link)
                     
                     attachment_info = "\n".join(attachment_links)
-                    embed.add_field(name="🔗 Attachments", value=attachment_info, inline=False)
+                    embed.add_field(name="🔗 ไฟล์แนบ", value=attachment_info, inline=False)
                 
                 await select_interaction.response.send_message(embed=embed, ephemeral=True)
 
         view = ViewSelect(self)
-        await interaction.response.send_message("Select a note to view:", view=view, ephemeral=True)
+        await interaction.response.send_message("เลือกบันทึกที่จะดู:", view=view, ephemeral=True)
 
-    @discord.ui.button(label="🗑️ Delete", style=discord.ButtonStyle.red)
+    @discord.ui.button(label="🗑️ ลบ", style=discord.ButtonStyle.red)
     async def delete_note(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.user_id:
-            await interaction.response.send_message("❌ Not your notes!", ephemeral=True)
+            await interaction.response.send_message("❌ ไม่ใช่บันทึกของคุณ!", ephemeral=True)
             return
 
         if not self.notes:
-            await interaction.response.send_message("❌ No notes to delete!", ephemeral=True)
+            await interaction.response.send_message("❌ ไม่มีบันทึกที่ต้องลบ!", ephemeral=True)
             return
 
         options = [
@@ -286,12 +285,12 @@ class NotesView(discord.ui.View):
                 self.parent = parent
 
             @discord.ui.select(
-                placeholder="Select a note to delete...",
+                placeholder="เลือกบันทึกที่จะลบ...",
                 options=options[:25]
             )
             async def select_delete(self, select_interaction: discord.Interaction, select: discord.ui.Select):
                 if select_interaction.user.id != self.parent.user_id:
-                    await select_interaction.response.send_message("❌ Not your notes!", ephemeral=True)
+                    await select_interaction.response.send_message("❌ ไม่ใช่บันทึกของคุณ!", ephemeral=True)
                     return
 
                 idx = int(select.values[0])
@@ -300,22 +299,22 @@ class NotesView(discord.ui.View):
                 save_user_data(self.parent.user_id, self.parent.notes, notes=True)
                 
                 await select_interaction.response.send_message(
-                    f"🗑️ Deleted note **{deleted_title}**!",
+                    f"🗑️ ลบบันทึก **{deleted_title}** แล้ว!",
                     ephemeral=True
                 )
 
         view = DeleteSelect(self)
-        await interaction.response.send_message("Select a note to delete:", view=view, ephemeral=True)
+        await interaction.response.send_message("เลือกบันทึกที่จะลบ:", view=view, ephemeral=True)
 
 
 def generate_temp_code():
-    """Generate a random temporary command code (a-z, A-Z, 0-9)"""
+    """สร้างรหัสชั่วคราวแบบสุ่ม (a-z, A-Z, 0-9)"""
     characters = string.ascii_letters + string.digits
     return ''.join(random.choice(characters) for _ in range(10))
 
 
 def create_temp_note_code(user_id: int, duration_minutes: int = 5) -> str:
-    """Create a temporary note code for a user"""
+    """สร้างรหัสชั่วคราวสำหรับบันทึกของผู้ใช้"""
     code = generate_temp_code()
     TEMP_NOTE_CODES[user_id] = {
         "code": code,
@@ -325,8 +324,7 @@ def create_temp_note_code(user_id: int, duration_minutes: int = 5) -> str:
 
 
 def is_temp_code_valid(user_id: int, code: str) -> bool:
-    """Check if a temporary code is valid and not expired"""
-    # Strip whitespace and convert to lowercase for comparison
+    """ตรวจสอบว่ารหัสชั่วคราวถูกต้องและไม่หมดอายุ"""
     code = code.strip().lower()
     
     if user_id not in TEMP_NOTE_CODES:
@@ -344,7 +342,7 @@ def is_temp_code_valid(user_id: int, code: str) -> bool:
 
 
 def cleanup_expired_codes():
-    """Remove expired temporary codes"""
+    """ลบรหัสชั่วคราวที่หมดอายุ"""
     expired_users = [
         user_id for user_id, data in TEMP_NOTE_CODES.items()
         if datetime.now() > data["expires_at"]
@@ -354,54 +352,54 @@ def cleanup_expired_codes():
 
 
 class NoteActionView(discord.ui.View):
-    """View for selecting note action (create, list, delete)"""
+    """มุมมองสำหรับเลือกการดำเนินการกับบันทึก (สร้าง, ดู, ลบ)"""
     def __init__(self, user_id: int, context):
         super().__init__(timeout=300)
         self.user_id = user_id
         self.context = context
 
-    @discord.ui.button(label="📝 Create Note", style=discord.ButtonStyle.green, emoji="✏️")
+    @discord.ui.button(label="📝 สร้างบันทึก", style=discord.ButtonStyle.green, emoji="✏️")
     async def create_note(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.user_id:
-            await interaction.response.send_message("❌ You can't interact with this!", ephemeral=True)
+            await interaction.response.send_message("❌ คุณไม่สามารถโต้ตอบกับสิ่งนี้ได้!", ephemeral=True)
             return
         
-        # Selection view for create method
+        # มุมมองเลือกวิธีการสร้าง
         class CreateMethodView(discord.ui.View):
             def __init__(self, user_id, parent_cog):
                 super().__init__(timeout=300)
                 self.user_id = user_id
                 self.parent_cog = parent_cog
             
-            @discord.ui.button(label="GUI Form", style=discord.ButtonStyle.blurple, emoji="📋")
+            @discord.ui.button(label="ฟอร์ม GUI", style=discord.ButtonStyle.blurple, emoji="📋")
             async def gui_method(self, method_interaction: discord.Interaction, button: discord.ui.Button):
                 if method_interaction.user.id != self.user_id:
-                    await method_interaction.response.send_message("❌ Not your action!", ephemeral=True)
+                    await method_interaction.response.send_message("❌ ไม่ใช่การกระทำของคุณ!", ephemeral=True)
                     return
                 
                 await self._show_gui_method(method_interaction)
             
-            @discord.ui.button(label="Command Method", style=discord.ButtonStyle.blurple, emoji="💬")
+            @discord.ui.button(label="วิธีใช้คำสั่ง", style=discord.ButtonStyle.blurple, emoji="💬")
             async def command_method(self, method_interaction: discord.Interaction, button: discord.ui.Button):
                 if method_interaction.user.id != self.user_id:
-                    await method_interaction.response.send_message("❌ Not your action!", ephemeral=True)
+                    await method_interaction.response.send_message("❌ ไม่ใช่การกระทำของคุณ!", ephemeral=True)
                     return
                 
                 await self._show_command_method(method_interaction)
             
             async def _show_gui_method(self, method_interaction: discord.Interaction):
-                """Show the GUI form method"""
-                # Create a modal for note creation
-                class NoteModal(discord.ui.Modal, title="Create a New Note"):
+                """แสดงวิธีการใช้ฟอร์ม GUI"""
+                # สร้าง modal สำหรับสร้างบันทึก
+                class NoteModal(discord.ui.Modal, title="สร้างบันทึกใหม่"):
                     title_input = discord.ui.TextInput(
-                        label="Note Title",
-                        placeholder="Enter note title...",
+                        label="ชื่อบันทึก",
+                        placeholder="ป้อนชื่อบันทึก...",
                         max_length=256,
                         required=True
                     )
                     content_input = discord.ui.TextInput(
-                        label="Note Content",
-                        placeholder="Enter note content...",
+                        label="เนื้อหาบันทึก",
+                        placeholder="ป้อนเนื้อหาบันทึก...",
                         style=discord.TextStyle.long,
                         max_length=4000,
                         required=True
@@ -411,7 +409,6 @@ class NoteActionView(discord.ui.View):
                         user_id = modal_interaction.user.id
                         notes = load_user_data(user_id, notes=True)
                         
-                        # Get attachments from the parent interaction context
                         attachments = []
                         if hasattr(self, 'stored_attachments'):
                             attachments = self.stored_attachments
@@ -426,27 +423,27 @@ class NoteActionView(discord.ui.View):
                         save_user_data(user_id, notes, notes=True)
                         
                         embed = discord.Embed(
-                            title="📝 Note Created!",
+                            title="📝 สร้างบันทึกแล้ว!",
                             description=f"**{self.title_input.value}**\n\n{self.content_input.value[:200]}...",
                             color=discord.Color.gold()
                         )
                         if attachments:
                             attachment_info = "\n".join([f"📎 {att['filename']}" for att in attachments])
-                            embed.add_field(name="Attachments", value=attachment_info, inline=False)
+                            embed.add_field(name="ไฟล์แนบ", value=attachment_info, inline=False)
                         
                         await modal_interaction.response.send_message(embed=embed, ephemeral=True)
 
-                # Check if the user has recent attachments
+                # ตรวจสอบว่าผู้ใช้มีไฟล์แนบล่าสุดหรือไม่
                 class AttachmentView(discord.ui.View):
                     def __init__(self, user_id):
                         super().__init__(timeout=300)
                         self.user_id = user_id
                         self.attachments = []
                     
-                    @discord.ui.button(label="Continue to Create", style=discord.ButtonStyle.green)
+                    @discord.ui.button(label="ดำเนินการต่อ", style=discord.ButtonStyle.green)
                     async def continue_create(self, att_interaction: discord.Interaction, button: discord.ui.Button):
                         if att_interaction.user.id != self.user_id:
-                            await att_interaction.response.send_message("❌ Not your action!", ephemeral=True)
+                            await att_interaction.response.send_message("❌ ไม่ใช่การกระทำของคุณ!", ephemeral=True)
                             return
                         
                         modal = NoteModal()
@@ -455,7 +452,7 @@ class NoteActionView(discord.ui.View):
                 
                 view = AttachmentView(self.user_id)
                 
-                # Try to get attachments from recent message if available
+                # ลองดึงไฟล์แนบจากข้อความล่าสุด
                 try:
                     async for message in method_interaction.channel.history(limit=100):
                         if message.author.id == method_interaction.user.id and message.attachments:
@@ -473,18 +470,18 @@ class NoteActionView(discord.ui.View):
                 
                 attachment_text = ""
                 if view.attachments:
-                    attachment_text = "\n\n**📎 Found attachments:**\n" + "\n".join([f"• {att['filename']}" for att in view.attachments])
+                    attachment_text = "\n\n**📎 พบไฟล์แนบ:**\n" + "\n".join([f"• {att['filename']}" for att in view.attachments])
                 
                 embed = discord.Embed(
-                    title="📋 GUI Form Method",
-                    description=f"Fill in the form to create your note.{attachment_text}",
+                    title="📋 วิธีฟอร์ม GUI",
+                    description=f"กรอกฟอร์มเพื่อสร้างบันทึกของคุณ{attachment_text}",
                     color=discord.Color.gold()
                 )
                 await method_interaction.response.send_message(embed=embed, view=view, ephemeral=True)
             
             async def _show_command_method(self, method_interaction: discord.Interaction):
-                """Show the command method with temporary code"""
-                # Generate temporary code for this user
+                """แสดงวิธีการใช้คำสั่งพร้อมรหัสชั่วคราว"""
+                # สร้างรหัสชั่วคราวสำหรับผู้ใช้
                 temp_code = create_temp_note_code(method_interaction.user.id, duration_minutes=5)
                 
                 class CodeCopyView(discord.ui.View):
@@ -492,35 +489,34 @@ class NoteActionView(discord.ui.View):
                         super().__init__(timeout=300)
                         self.code = code
                     
-                    @discord.ui.button(label="📋 Copy Code", style=discord.ButtonStyle.primary, emoji="📌")
+                    @discord.ui.button(label="📋 คัดลอกรหัส", style=discord.ButtonStyle.primary, emoji="📌")
                     async def copy_code(self, button_interaction: discord.Interaction, button: discord.ui.Button):
-                        # Copy code to clipboard via message
                         await button_interaction.response.send_message(
-                            f"Your code to copy:\n```\n{self.code}\n```",
+                            f"รหัสของคุณที่ต้องการคัดลอก:\n```\n{self.code}\n```",
                             ephemeral=True
                         )
                 
                 embed = discord.Embed(
-                    title="💬 Temporary Command Method",
-                    description=f"Your temporary code is ready for 5 minutes:\n\n**Code:** `{temp_code}`\n\n**Command format:**\n```\n/notecreate\ntempcode: {temp_code}\ntitle: Your Title\ncontent: Your Content\nattachment: [your_file]\n```\n\n**Steps:**\n1. Click the button below to copy your code\n2. Use the `/notecreate` command\n3. Paste your code in the `tempcode` field\n4. Fill in title, content, and attach a file\n5. Done! ✅",
+                    title="💬 วิธีใช้รหัสชั่วคราว",
+                    description=f"รหัสชั่วคราวของคุณพร้อมใช้งาน 5 นาที:\n\n**รหัส:** `{temp_code}`\n\n**รูปแบบคำสั่ง:**\n```\n/notecreate\ntempcode: {temp_code}\ntitle: ชื่อเรื่อง\ncontent: เนื้อหา\nattachment: [ไฟล์ของคุณ]\n```\n\n**ขั้นตอน:**\n1. กดปุ่มด้านล่างเพื่อคัดลอกรหัส\n2. ใช้คำสั่ง `/notecreate`\n3. วางรหัสของคุณในช่อง `tempcode`\n4. กรอกชื่อ เนื้อหา และแนบไฟล์\n5. เสร็จ! ✅",
                     color=discord.Color.gold()
                 )
-                embed.set_footer(text="⏱️ Code expires in 5 minutes | Or after first use")
+                embed.set_footer(text="⏱️ รหัสหมดอายุใน 5 นาที | หรือหลังจากใช้ครั้งแรก")
                 
                 await method_interaction.response.send_message(embed=embed, view=CodeCopyView(temp_code), ephemeral=True)
         
         method_view = CreateMethodView(interaction.user.id, self)
         embed = discord.Embed(
-            title="📝 Choose Creation Method",
-            description="Select how you want to create your note:",
+            title="📝 เลือกวิธีสร้าง",
+            description="เลือกวิธีที่คุณต้องการสร้างบันทึก:",
             color=discord.Color.gold()
         )
         await interaction.response.send_message(embed=embed, view=method_view, ephemeral=True)
 
-    @discord.ui.button(label="📋 List Notes", style=discord.ButtonStyle.blurple, emoji="📚")
+    @discord.ui.button(label="📋 รายการบันทึก", style=discord.ButtonStyle.blurple, emoji="📚")
     async def list_notes(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.user_id:
-            await interaction.response.send_message("❌ You can't interact with this!", ephemeral=True)
+            await interaction.response.send_message("❌ คุณไม่สามารถโต้ตอบกับสิ่งนี้ได้!", ephemeral=True)
             return
         
         await interaction.response.defer(ephemeral=True)
@@ -529,15 +525,15 @@ class NoteActionView(discord.ui.View):
         
         if not notes:
             embed = discord.Embed(
-                title="📝 Your Notes",
-                description="✨ No notes yet! Click the Create Note button to make one.",
+                title="📝 บันทึกของคุณ",
+                description="✨ ยังไม่มีบันทึก! กดปุ่มสร้างบันทึกเพื่อสร้าง",
                 color=discord.Color.gold()
             )
             await interaction.followup.send(embed=embed, ephemeral=True)
             return
         
         embed = discord.Embed(
-            title="📝 Your Notes",
+            title="📝 บันทึกของคุณ",
             color=discord.Color.gold()
         )
         
@@ -545,12 +541,10 @@ class NoteActionView(discord.ui.View):
             attachment_count = len(note.get('attachments', []))
             attachment_str = f" 📎 ({attachment_count})" if attachment_count > 0 else ""
             
-            # Create note preview with clickable attachments
             content_preview = note['content'][:100] + "..." if len(note['content']) > 100 else note['content']
             
-            # Add attachment links to preview if available
             if note.get('attachments') and attachment_count > 0:
-                content_preview += f"\n\n**Attachments:** "
+                content_preview += f"\n\n**ไฟล์แนบ:** "
                 attachment_links = []
                 for att in note.get('attachments', []):
                     link = f"[{att['filename']}]({att['url']})"
@@ -563,14 +557,14 @@ class NoteActionView(discord.ui.View):
                 inline=False
             )
         
-        embed.set_footer(text=f"Total: {len(notes)} notes | Click 'View Note' for full details")
+        embed.set_footer(text=f"ทั้งหมด: {len(notes)} บันทึก | กด 'ดูบันทึก' เพื่อดูรายละเอียด")
         view = NotesView(self.user_id, notes, interaction)
         await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
-    @discord.ui.button(label="🗑️ Delete Note", style=discord.ButtonStyle.red, emoji="❌")
+    @discord.ui.button(label="🗑️ ลบบันทึก", style=discord.ButtonStyle.red, emoji="❌")
     async def delete_note(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.user_id:
-            await interaction.response.send_message("❌ You can't interact with this!", ephemeral=True)
+            await interaction.response.send_message("❌ คุณไม่สามารถโต้ตอบกับสิ่งนี้ได้!", ephemeral=True)
             return
         
         await interaction.response.defer(ephemeral=True)
@@ -578,7 +572,7 @@ class NoteActionView(discord.ui.View):
         notes = load_user_data(interaction.user.id, notes=True)
         
         if not notes:
-            await interaction.followup.send("❌ No notes to delete!", ephemeral=True)
+            await interaction.followup.send("❌ ไม่มีบันทึกที่ต้องลบ!", ephemeral=True)
             return
         
         options = [
@@ -596,12 +590,12 @@ class NoteActionView(discord.ui.View):
                 self.parent = parent
 
             @discord.ui.select(
-                placeholder="Select a note to delete...",
+                placeholder="เลือกบันทึกที่จะลบ...",
                 options=options[:25]
             )
             async def select_delete(self, select_interaction: discord.Interaction, select: discord.ui.Select):
                 if select_interaction.user.id != self.parent.user_id:
-                    await select_interaction.response.send_message("❌ Not your notes!", ephemeral=True)
+                    await select_interaction.response.send_message("❌ ไม่ใช่บันทึกของคุณ!", ephemeral=True)
                     return
 
                 idx = int(select.values[0])
@@ -610,21 +604,21 @@ class NoteActionView(discord.ui.View):
                 save_user_data(self.parent.user_id, notes, notes=True)
                 
                 await select_interaction.response.send_message(
-                    f"🗑️ Deleted note **{deleted_title}**!",
+                    f"🗑️ ลบบันทึก **{deleted_title}** แล้ว!",
                     ephemeral=True
                 )
 
         view = DeleteSelect(self)
-        await interaction.followup.send("Select a note to delete:", view=view, ephemeral=True)
+        await interaction.followup.send("เลือกบันทึกที่จะลบ:", view=view, ephemeral=True)
 
 
 def ensure_data_dir():
-    """Ensure the data directory exists"""
+    """ตรวจสอบให้แน่ใจว่าไดเรกทอรี data มีอยู่"""
     os.makedirs("data", exist_ok=True)
 
 
 def load_user_data(user_id: int, notes: bool = False):
-    """Load user todos or notes from JSON file"""
+    """โหลดรายการสิ่งที่ต้องทำหรือบันทึกของผู้ใช้จากไฟล์ JSON"""
     ensure_data_dir()
     
     if not os.path.exists(DATA_FILE):
@@ -643,7 +637,7 @@ def load_user_data(user_id: int, notes: bool = False):
 
 
 def save_user_data(user_id: int, data: list[dict], notes: bool = False) -> None:
-    """Save user todos or notes to JSON file"""
+    """บันทึกรายการสิ่งที่ต้องทำหรือบันทึกของผู้ใช้ไปยังไฟล์ JSON"""
     ensure_data_dir()
     
     all_data = {}
@@ -668,15 +662,15 @@ def save_user_data(user_id: int, data: list[dict], notes: bool = False) -> None:
 
 
 def create_todo_embed(todos: list[dict], user_id: int) -> discord.Embed:
-    """Create an embed displaying todos"""
+    """สร้าง embed แสดงรายการสิ่งที่ต้องทำ"""
     embed = discord.Embed(
-        title="📋 Your Todo List",
+        title="📋 รายการสิ่งที่ต้องทำ",
         color=discord.Color.blue(),
-        description="Here are your current todos:"
+        description="นี่คือรายการสิ่งที่ต้องทำของคุณ:"
     )
     
     if not todos:
-        embed.description = "✨ No todos yet! Add one with `/todo add`"
+        embed.description = "✨ ยังไม่มีรายการ! เพิ่มด้วย `/todo add`"
         return embed
     
     pending = [t for t in todos if not t.get('completed', False)]
@@ -684,18 +678,18 @@ def create_todo_embed(todos: list[dict], user_id: int) -> discord.Embed:
     
     if pending:
         pending_text = "\n".join([f"• {t['text']}" for t in pending])
-        embed.add_field(name="📝 Pending", value=pending_text or "None", inline=False)
+        embed.add_field(name="📝 รอดำเนินการ", value=pending_text or "ไม่มี", inline=False)
     
     if completed:
         completed_text = "\n".join([f"✅ {t['text']}" for t in completed])
-        embed.add_field(name="✅ Completed", value=completed_text or "None", inline=False)
+        embed.add_field(name="✅ เสร็จแล้ว", value=completed_text or "ไม่มี", inline=False)
     
-    embed.set_footer(text=f"Total: {len(todos)} | Completed: {len(completed)}")
+    embed.set_footer(text=f"ทั้งหมด: {len(todos)} | เสร็จแล้ว: {len(completed)}")
     return embed
 
 
 class WorkCog(commands.Cog):
-    """Todo list and note-taking commands + QWERTY->Thai autocorrect"""
+    """คำสั่งรายการสิ่งที่ต้องทำและบันทึก + แก้ไข QWERTY->ไทย"""
     
     def __init__(self, bot):
         self.bot = bot
@@ -739,29 +733,29 @@ class WorkCog(commands.Cog):
         guild_id = str(ctx.guild.id) if ctx.guild else 'dm'
         self.layout_config[guild_id] = enabled
         save_thai_layout_config(self.layout_config)
-        await ctx.send(f"✅ QWERTY->Thai autocorrect is now {'enabled' if enabled else 'disabled'}.")
+        await ctx.send(f"✅ การแก้ไข QWERTY->ไทย ถูก{'เปิด' if enabled else 'ปิด'}ใช้งานแล้ว")
 
-    @app_commands.command(name='thai_layout_toggle', description='Enable/disable QWERTY->Thai autocorrection')
+    @app_commands.command(name='thai_layout_toggle', description='เปิด/ปิดการแก้ไข QWERTY->ไทย')
     @app_commands.checks.has_permissions(administrator=True)
     async def thai_layout_toggle_slash(self, interaction: discord.Interaction, enabled: bool):
         guild_id = str(interaction.guild.id) if interaction.guild else 'dm'
         self.layout_config[guild_id] = enabled
         save_thai_layout_config(self.layout_config)
-        await interaction.response.send_message(f"✅ QWERTY->Thai autocorrect is now {'enabled' if enabled else 'disabled'}.", ephemeral=True)
+        await interaction.response.send_message(f"✅ การแก้ไข QWERTY->ไทย ถูก{'เปิด' if enabled else 'ปิด'}ใช้งานแล้ว", ephemeral=True)
 
     @commands.command(name='qwerty_to_thai')
     async def qwerty_to_thai_cmd(self, ctx: commands.Context, *, text: str):
         converted = convert_to_thai(text)
-        await ctx.send(f"🔁 Converted text:\n{converted}")
+        await ctx.send(f"🔁 ข้อความที่แปลงแล้ว:\n{converted}")
 
-    @app_commands.command(name='qtt', description='Convert QWERTY text to Thai')
+    @app_commands.command(name='qtt', description='แปลงข้อความ QWERTY เป็นภาษาไทย')
     async def qwerty_to_thai_cmd_slash(self, interaction: discord.Interaction, text: str):
         converted = convert_to_thai(text)
-        await interaction.response.send_message(f"🔁 Converted text:\n{converted}", ephemeral=True)
+        await interaction.response.send_message(f"🔁 ข้อความที่แปลงแล้ว:\n{converted}", ephemeral=True)
 
     @tasks.loop(minutes=1)
     async def cleanup_expired_codes(self):
-        """Periodically clean up expired temporary codes"""
+        """ลบรหัสชั่วคราวที่หมดอายุเป็นระยะ"""
         cleanup_expired_codes()
     
     @cleanup_expired_codes.before_loop
@@ -769,15 +763,15 @@ class WorkCog(commands.Cog):
         await self.bot.wait_until_ready()
     
     def cog_unload(self):
-        """Stop the cleanup task when cog is unloaded"""
+        """หยุดงานล้างข้อมูลเมื่อ cog ถูกยกเลิกโหลด"""
         self.cleanup_expired_codes.cancel()
 
-    @app_commands.command(name="todo", description="Manage your todo list")
+    @app_commands.command(name="todo", description="จัดการรายการสิ่งที่ต้องทำ")
     @discord.app_commands.allowed_installs(guilds=True, users=True)
     @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     @app_commands.describe(
-        action="Action to perform: add, view, or clear",
-        text="Text for the todo (required for 'add')"
+        action="การดำเนินการ: add, view, หรือ clear",
+        text="ข้อความสำหรับรายการ (จำเป็นสำหรับ 'add')"
     )
     async def todo(
         self, 
@@ -785,7 +779,7 @@ class WorkCog(commands.Cog):
         action: str = "view",
         text: Optional[str] = None
     ):
-        """Manage your todo list with /todo add|view|clear"""
+        """จัดการรายการสิ่งที่ต้องทำด้วย /todo add|view|clear"""
         await interaction.response.defer(ephemeral=True)
         
         user_id = interaction.user.id
@@ -793,7 +787,7 @@ class WorkCog(commands.Cog):
         
         if action.lower() == "add":
             if not text:
-                await interaction.followup.send("❌ Please provide text for the todo!", ephemeral=True)
+                await interaction.followup.send("❌ กรุณาระบุข้อความสำหรับรายการ!", ephemeral=True)
                 return
             
             todo_item = {
@@ -805,8 +799,8 @@ class WorkCog(commands.Cog):
             save_user_data(user_id, todos, notes=False)
             
             embed = discord.Embed(
-                title="✅ Todo Added!",
-                description=f"Added: **{text}**",
+                title="✅ เพิ่มรายการแล้ว!",
+                description=f"เพิ่ม: **{text}**",
                 color=discord.Color.green()
             )
             view = TodoListView(user_id, todos, interaction)
@@ -820,37 +814,37 @@ class WorkCog(commands.Cog):
         elif action.lower() == "clear":
             todos.clear()
             save_user_data(user_id, todos, notes=False)
-            await interaction.followup.send("🗑️ All todos cleared!", ephemeral=True)
+            await interaction.followup.send("🗑️ ลบรายการทั้งหมดแล้ว!", ephemeral=True)
         
         else:
             await interaction.followup.send(
-                "❌ Invalid action! Use: `add`, `view`, or `clear`",
+                "❌ การดำเนินการไม่ถูกต้อง! ใช้: `add`, `view`, หรือ `clear`",
                 ephemeral=True
             )
 
-    @app_commands.command(name="note", description="Create and manage notes")
+    @app_commands.command(name="note", description="สร้างและจัดการบันทึก")
     @discord.app_commands.allowed_installs(guilds=True, users=True)
     @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def note(self, interaction: discord.Interaction):
-        """Manage notes with interactive menu"""
+        """จัดการบันทึกด้วยเมนูโต้ตอบ"""
         embed = discord.Embed(
-            title="📝 Note Manager",
-            description="Choose what you'd like to do with your notes:",
+            title="📝 ตัวจัดการบันทึก",
+            description="เลือกสิ่งที่คุณต้องการทำกับบันทึกของคุณ:",
             color=discord.Color.gold()
         )
-        embed.set_footer(text="Click a button to get started")
+        embed.set_footer(text="กดปุ่มเพื่อเริ่มต้น")
         
         view = NoteActionView(interaction.user.id, interaction)
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
-    @app_commands.command(name="notecreate", description="Create a note with file attachments")
+    @app_commands.command(name="notecreate", description="สร้างบันทึกพร้อมไฟล์แนบ")
     @discord.app_commands.allowed_installs(guilds=True, users=True)
     @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     @app_commands.describe(
-        tempcode="Your temporary code (from /note Create Note > Command Method)",
-        title="Title for your note",
-        content="Content for your note",
-        attachment="Attach a file (required)"
+        tempcode="รหัสชั่วคราวของคุณ (จาก /note Create Note > Command Method)",
+        title="ชื่อเรื่องสำหรับบันทึก",
+        content="เนื้อหาสำหรับบันทึก",
+        attachment="แนบไฟล์ (จำเป็น)"
     )
     async def notecreate(
         self,
@@ -860,32 +854,31 @@ class WorkCog(commands.Cog):
         content: str,
         attachment: discord.Attachment
     ):
-        """Create a note with attachments using command method with temporary code"""
+        """สร้างบันทึกพร้อมไฟล์แนบโดยใช้รหัสชั่วคราว"""
         user_id = interaction.user.id
         
-        # Debug: Check if code exists
+        # ดีบัก: ตรวจสอบว่ามีรหัสหรือไม่
         has_code = user_id in TEMP_NOTE_CODES
         
-        # Verify the temporary code
+        # ตรวจสอบรหัสชั่วคราว
         if not is_temp_code_valid(user_id, tempcode):
             if not has_code:
-                error_msg = "No code found for your account. Generate one with `/note` → Create Note → Command Method"
+                error_msg = "ไม่พบรหัสสำหรับบัญชีของคุณ สร้างได้ที่ `/note` → Create Note → Command Method"
             else:
-                error_msg = "Your temporary code is invalid or has expired.\n\nGenerate a new one with `/note` → Create Note → Command Method"
+                error_msg = "รหัสชั่วคราวของคุณไม่ถูกต้องหรือหมดอายุ\n\nสร้างใหม่ได้ที่ `/note` → Create Note → Command Method"
             
             embed = discord.Embed(
-                title="❌ Invalid or Expired Code",
+                title="❌ รหัสไม่ถูกต้องหรือหมดอายุ",
                 description=error_msg,
                 color=discord.Color.red()
             )
-            embed.add_field(name="Debug Info", value=f"Code provided: `{tempcode.strip()}`\nCode exists: `{has_code}`", inline=False)
+            embed.add_field(name="ข้อมูลดีบัก", value=f"รหัสที่ให้: `{tempcode.strip()}`\nรหัสมีอยู่: `{has_code}`", inline=False)
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
         
-        # Code is valid, create the note
+        # รหัสถูกต้อง สร้างบันทึก
         notes = load_user_data(user_id, notes=True)
         
-        # Convert attachment to the same format
         attachments = [
             {
                 "filename": attachment.filename,
@@ -903,7 +896,7 @@ class WorkCog(commands.Cog):
         notes.append(note_item)
         save_user_data(user_id, notes, notes=True)
         
-        # Expire the code after use
+        # ทำให้รหัสหมดอายุหลังการใช้งาน
         if user_id in TEMP_NOTE_CODES:
             del TEMP_NOTE_CODES[user_id]
         
@@ -911,12 +904,12 @@ class WorkCog(commands.Cog):
             def __init__(self):
                 super().__init__(timeout=300)
             
-            @discord.ui.button(label="🔓 Code Already Expired", style=discord.ButtonStyle.red, disabled=True)
+            @discord.ui.button(label="🔓 รหัสหมดอายุแล้ว", style=discord.ButtonStyle.red, disabled=True)
             async def code_expired_btn(self, button_interaction: discord.Interaction, button: discord.ui.Button):
                 pass
         
         embed = discord.Embed(
-            title="📝 Note Created!",
+            title="📝 สร้างบันทึกแล้ว!",
             description=f"**{title}**\n\n{content[:200]}...",
             color=discord.Color.gold()
         )
@@ -929,16 +922,16 @@ class WorkCog(commands.Cog):
                 attachment_links.append(link)
             
             attachment_info = "\n".join(attachment_links)
-            embed.add_field(name="🔗 Attachments", value=attachment_info, inline=False)
+            embed.add_field(name="🔗 ไฟล์แนบ", value=attachment_info, inline=False)
         
-        embed.set_footer(text="✅ Code has been automatically expired after use")
+        embed.set_footer(text="✅ รหัสถูกทำให้หมดอายุโดยอัตโนมัติหลังการใช้งาน")
         
         await interaction.response.send_message(embed=embed, view=CodeExpireView(), ephemeral=True)
 
-    @app_commands.command(name="reminder", description="Set a reminder")
+    @app_commands.command(name="reminder", description="ตั้งการแจ้งเตือน")
     @app_commands.describe(
-        text="What to remind you about",
-        importance="Importance level: low, medium, or high"
+        text="สิ่งที่ต้องการแจ้งเตือน",
+        importance="ระดับความสำคัญ: low, medium, หรือ high"
     )
     async def reminder(
         self,
@@ -946,18 +939,18 @@ class WorkCog(commands.Cog):
         text: str,
         importance: Optional[str] = "medium"
     ):
-        """Create a reminder with /reminder"""
+        """สร้างการแจ้งเตือนด้วย /reminder"""
         await interaction.response.defer(ephemeral=True)
         
         importance = importance.lower() if importance else "medium"
         if importance not in ["low", "medium", "high"]:
             await interaction.followup.send(
-                "❌ Importance must be: low, medium, or high",
+                "❌ ระดับความสำคัญต้องเป็น: low, medium, หรือ high",
                 ephemeral=True
             )
             return
         
-        # Reminders are stored in todos with a special marker
+        # การแจ้งเตือนถูกเก็บใน todos ด้วยเครื่องหมายพิเศษ
         user_id = interaction.user.id
         todos = load_user_data(user_id, notes=False)
         
@@ -974,30 +967,30 @@ class WorkCog(commands.Cog):
         emoji_map = {"low": "🟢", "medium": "🟡", "high": "🔴"}
         
         embed = discord.Embed(
-            title=f"{emoji_map[importance]} Reminder Set!",
+            title=f"{emoji_map[importance]} ตั้งการแจ้งเตือนแล้ว!",
             description=f"**{text}**",
             color=discord.Color.red() if importance == "high" else (discord.Color.gold() if importance == "medium" else discord.Color.green())
         )
         await interaction.followup.send(embed=embed, ephemeral=True)
 
-    @app_commands.command(name="notes", description="Quick alias for note manager")
+    @app_commands.command(name="notes", description="ทางลัดไปยังตัวจัดการบันทึก")
     async def notes(self, interaction: discord.Interaction):
-        """Quick access to notes - same as /note"""
+        """เข้าถึงบันทึกอย่างรวดเร็ว - เหมือน /note"""
         embed = discord.Embed(
-            title="📝 Note Manager",
-            description="Choose what you'd like to do with your notes:",
+            title="📝 ตัวจัดการบันทึก",
+            description="เลือกสิ่งที่คุณต้องการทำกับบันทึกของคุณ:",
             color=discord.Color.gold()
         )
-        embed.set_footer(text="Click a button to get started")
+        embed.set_footer(text="กดปุ่มเพื่อเริ่มต้น")
         
         view = NoteActionView(interaction.user.id, interaction)
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
-    @app_commands.command(name="todos", description="Quick alias for todo view")
+    @app_commands.command(name="todos", description="ทางลัดไปยังรายการสิ่งที่ต้องทำ")
     @discord.app_commands.allowed_installs(guilds=True, users=True)
     @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def todos(self, interaction: discord.Interaction):
-        """Quick view of all todos - alias for /todo view"""
+        """ดูรายการสิ่งที่ต้องทำอย่างรวดเร็ว - ทางลัดสำหรับ /todo view"""
         await interaction.response.defer(ephemeral=True)
         
         user_id = interaction.user.id
@@ -1007,24 +1000,24 @@ class WorkCog(commands.Cog):
         view = TodoListView(user_id, todos, interaction)
         await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
-    @app_commands.command(name="qwerty_to_thai", description="Convert QWERTY keyboard characters to Thai script")
+    @app_commands.command(name="qwerty_to_thai", description="แปลงแป้นพิมพ์ QWERTY เป็นภาษาไทย")
     @discord.app_commands.allowed_installs(guilds=True, users=True)
     @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
-    @app_commands.describe(text="Input text in QWERTY that should be mapped as if typed with Thai keyboard")
+    @app_commands.describe(text="ข้อความที่พิมพ์ด้วย QWERTY ที่ควรจะถูกแปลงเป็นแป้นพิมพ์ไทย")
     async def qwerty_to_thai(self, interaction: discord.Interaction, text: str):
-        """Convert QWERTY keyboard input into Thai characters and send result."""
+        """แปลงข้อความจากแป้นพิมพ์ QWERTY เป็นตัวอักษรไทยและส่งผลลัพธ์"""
         await interaction.response.defer(ephemeral=True)
 
         converted = qwerty_to_thai_text(text)
 
         embed = discord.Embed(
-            title="🔤 QWERTY -> Thai",
-            description=f"**Input:** {text}\n**Output:** {converted}",
+            title="🔤 QWERTY -> ไทย",
+            description=f"อินพุต: {text}\nเอาต์พุต: {converted}",
             color=discord.Color.teal()
         )
         await interaction.followup.send(embed=embed, ephemeral=True)
 
 
 async def setup(bot):
-    """Load the WorkCog into the bot"""
+    """โหลด WorkCog เข้าสู่บอท"""
     await bot.add_cog(WorkCog(bot))

@@ -16,10 +16,10 @@ class Owner(commands.Cog):
         self.bot: commands.Bot = bot
         self.cycle_paused: bool = False
         self.statuses = cycle([
-            lambda: f"Uptime: {get_uptime(getattr(self.bot, 'launch_time', None))}",
-            lambda: f"Owner: {self.bot.get_user(int(os.getenv('BOT_OWNER_ID', 0))).name if self.bot.get_user(int(os.getenv('BOT_OWNER_ID', 0))) else 'Unknown'}",
-            lambda: f"Serving {len(self.bot.guilds)} servers",
-            lambda: f"Time: {get_bangkok_time().strftime('%H:%M:%S')}",
+            lambda: f"อัปไทม์: {get_uptime(getattr(self.bot, 'launch_time', None))}",
+            lambda: f"เจ้าของ: {self.bot.get_user(int(os.getenv('BOT_OWNER_ID', 0))).name if self.bot.get_user(int(os.getenv('BOT_OWNER_ID', 0))) else 'ไม่ทราบ'}",
+            lambda: f"ให้บริการ {len(self.bot.guilds)} เซิร์ฟเวอร์",
+            lambda: f"เวลา: {get_bangkok_time().strftime('%H:%M:%S')}",
         ])
         self.status_cycle.start()
 
@@ -37,13 +37,13 @@ class Owner(commands.Cog):
                 status=discord.Status.online
             )
         except Exception as e:
-            print(f"Error in status cycle: {e}")
+            print(f"ข้อผิดพลาดใน status cycle: {e}")
 
     @status_cycle.before_loop
     async def before_status_cycle(self) -> None:
         await self.bot.wait_until_ready()
 
-    @commands.command(name="bot", help="Owner-only: manage the bot with subcommands.")
+    @commands.command(name="bot", help="เฉพาะเจ้าของ: จัดการบอทด้วยคำสั่งย่อย")
     @commands.is_owner()
     async def bot(self, ctx: commands.Context, action: str, *params: str) -> None:
         action = action.lower()
@@ -60,43 +60,43 @@ class Owner(commands.Cog):
                 self.cycle_paused = True
                 try:
                     await self.bot.change_presence(status=states[state])
-                    await ctx.send(f"✅ Bot online status set to `{state}`\n⏸️ Auto-cycling paused.")
+                    await ctx.send(f"✅ สถานะออนไลน์ของบอทถูกตั้งเป็น `{state}`\n⏸️ หยุดหมุนอัตโนมัติแล้ว")
                 except Exception as e:
-                    await ctx.send(f"❌ Failed to set state: {e}")
+                    await ctx.send(f"❌ ไม่สามารถตั้งสถานะ: {e}")
                 return
 
             text = " ".join(params).strip()
             if not text:
-                await ctx.send("❌ Please provide a status text or a state keyword.")
+                await ctx.send("❌ กรุณาระบุข้อความสถานะหรือคำสถานะ")
                 return
             self.cycle_paused = True
             await self.bot.change_presence(activity=discord.Game(text))
-            await ctx.send(f"✅ Status changed to: `{text}`\n⏸️ Auto-cycling paused.")
+            await ctx.send(f"✅ เปลี่ยนสถานะเป็น: `{text}`\n⏸️ หยุดหมุนอัตโนมัติแล้ว")
             return
 
         if action in ("resume", "resumecycle", "unpause"):
             self.cycle_paused = False
-            await ctx.send("▶️ Status auto-cycling resumed!")
+            await ctx.send("▶️ หมุนสถานะอัตโนมัติกลับมาทำงานแล้ว!")
             return
 
         if action in ("pause", "pausecycle"):
             self.cycle_paused = True
-            await ctx.send("⏸️ Status auto-cycling paused!")
+            await ctx.send("⏸️ หมุนสถานะอัตโนมัติหยุดแล้ว!")
             return
 
         if action in ("setname", "name"):
             name = " ".join(params).strip()
             if not name:
-                await ctx.send("❌ Please provide a new username.")
+                await ctx.send("❌ กรุณาระบุชื่อผู้ใช้ใหม่")
                 return
             try:
                 await self.bot.user.edit(username=name)
-                await ctx.send(f"✅ Bot username changed to: `{name}`")
+                await ctx.send(f"✅ เปลี่ยนชื่อบอทเป็น: `{name}`")
             except discord.HTTPException as e:
                 if getattr(e, "status", None) == 429:
-                    await ctx.send("❌ Rate limited!")
+                    await ctx.send("❌ ถูกจำกัดอัตราการใช้งาน!")
                 else:
-                    await ctx.send(f"❌ Failed: {e}")
+                    await ctx.send(f"❌ ล้มเหลว: {e}")
             return
 
         if action in ("setavatar", "avatar"):
@@ -104,19 +104,19 @@ class Owner(commands.Cog):
             if ctx.message.attachments and not image_url:
                 image_url = ctx.message.attachments[0].url
             if not image_url:
-                await ctx.send("❌ Please provide an image URL or attach an image.")
+                await ctx.send("❌ กรุณาระบุ URL รูปภาพหรือแนบรูปภาพ")
                 return
             try:
                 async with aiohttp.ClientSession() as session:
                     async with session.get(image_url) as resp:
                         if resp.status != 200:
-                            await ctx.send("❌ Failed to download the image.")
+                            await ctx.send("❌ ไม่สามารถดาวน์โหลดรูปภาพได้")
                             return
                         image_data = await resp.read()
                 await self.bot.user.edit(avatar=image_data)
-                await ctx.send("✅ Bot avatar updated successfully!")
+                await ctx.send("✅ อัปเดตรูปโปรไฟล์บอทสำเร็จ!")
             except Exception as e:
-                await ctx.send(f"❌ Failed: {e}")
+                await ctx.send(f"❌ ล้มเหลว: {e}")
             return
 
         if action in ("setbanner", "banner"):
@@ -124,116 +124,116 @@ class Owner(commands.Cog):
             if ctx.message.attachments and not image_url:
                 image_url = ctx.message.attachments[0].url
             if not image_url:
-                await ctx.send("❌ Please provide an image URL or attach an image.")
+                await ctx.send("❌ กรุณาระบุ URL รูปภาพหรือแนบรูปภาพ")
                 return
             try:
                 async with aiohttp.ClientSession() as session:
                     async with session.get(image_url) as resp:
                         if resp.status != 200:
-                            await ctx.send("❌ Failed to download the image.")
+                            await ctx.send("❌ ไม่สามารถดาวน์โหลดรูปภาพได้")
                             return
                         image_data = await resp.read()
                 await self.bot.user.edit(banner=image_data)
-                await ctx.send("✅ Bot banner updated successfully!")
+                await ctx.send("✅ อัปเดตแบนเนอร์บอทสำเร็จ!")
             except Exception as e:
-                await ctx.send(f"❌ Failed: {e}")
+                await ctx.send(f"❌ ล้มเหลว: {e}")
             return
 
         if action in ("removebanner", "delbanner"):
             try:
                 await self.bot.user.edit(banner=None)
-                await ctx.send("✅ Bot banner removed successfully!")
+                await ctx.send("✅ ลบแบนเนอร์บอทสำเร็จ!")
             except Exception as e:
-                await ctx.send(f"❌ Failed: {e}")
+                await ctx.send(f"❌ ล้มเหลว: {e}")
             return
 
         if action in ("profile", "botinfo"):
             user = self.bot.user
-            embed = discord.Embed(title="🤖 Bot Profile", color=discord.Color.blue())
+            embed = discord.Embed(title="🤖 โปรไฟล์บอท", color=discord.Color.blue())
             if user:
                 embed.set_thumbnail(url=user.display_avatar.url)
                 if user.banner:
                     embed.set_image(url=user.banner.url)
-                embed.add_field(name="Username", value=user.name, inline=True)
+                embed.add_field(name="ชื่อผู้ใช้", value=user.name, inline=True)
                 embed.add_field(name="ID", value=user.id, inline=True)
-                embed.add_field(name="Created At", value=user.created_at.strftime("%Y-%m-%d %H:%M:%S"), inline=False)
-            embed.add_field(name="Servers", value=len(self.bot.guilds), inline=True)
+                embed.add_field(name="สร้างเมื่อ", value=user.created_at.strftime("%Y-%m-%d %H:%M:%S"), inline=False)
+            embed.add_field(name="เซิร์ฟเวอร์", value=len(self.bot.guilds), inline=True)
             total_members = sum(g.member_count or 0 for g in self.bot.guilds)
-            embed.add_field(name="Users", value=str(total_members), inline=True)
+            embed.add_field(name="ผู้ใช้", value=str(total_members), inline=True)
             await ctx.send(embed=embed)
             return
 
         if action == "sync":
             if not params:
                 synced = await ctx.bot.tree.sync()
-                await ctx.send(f"✅ Synced {len(synced)} commands globally.")
+                await ctx.send(f"✅ ซิงค์ {len(synced)} คำสั่งทั่วโลกแล้ว")
                 return
             first = params[0].lower()
             if first == "current":
                 synced = await ctx.bot.tree.sync(guild=ctx.guild)
-                await ctx.send(f"✅ Synced {len(synced)} commands to current guild.")
+                await ctx.send(f"✅ ซิงค์ {len(synced)} คำสั่งไปยังเซิร์ฟเวอร์ปัจจุบันแล้ว")
                 return
             if first == "global":
                 ctx.bot.tree.copy_global_to(guild=ctx.guild)
                 synced = await ctx.bot.tree.sync(guild=ctx.guild)
-                await ctx.send(f"✅ Copied global to current guild ({len(synced)} commands).")
+                await ctx.send(f"✅ คัดลอกคำสั่งทั่วโลกไปยังเซิร์ฟเวอร์ปัจจุบัน ({len(synced)} คำสั่ง)")
                 return
             if first == "remove":
                 ctx.bot.tree.clear_commands(guild=ctx.guild)
                 await ctx.bot.tree.sync(guild=ctx.guild)
-                await ctx.send("✅ Cleared commands for current guild.")
+                await ctx.send("✅ ล้างคำสั่งของเซิร์ฟเวอร์ปัจจุบันแล้ว")
                 return
 
         if action in ("reload", "load", "unload"):
             if not params:
-                await ctx.send("❌ Please provide a cog name.")
+                await ctx.send("❌ กรุณาระบุชื่อ cog")
                 return
             cog_name = params[0]
             try:
                 if action == "reload":
                     await self.bot.unload_extension(f"cogs.{cog_name}")
                     await self.bot.load_extension(f"cogs.{cog_name}")
-                    await ctx.send(f"✅ Reloaded cog: `{cog_name}`")
+                    await ctx.send(f"✅ โหลด cog ซ้ำ: `{cog_name}`")
                 elif action == "load":
                     await self.bot.load_extension(f"cogs.{cog_name}")
-                    await ctx.send(f"✅ Loaded cog: `{cog_name}`")
+                    await ctx.send(f"✅ โหลด cog: `{cog_name}`")
                 else:
                     if cog_name.lower() == "owner":
-                        await ctx.send("❌ Cannot unload the Owner cog!")
+                        await ctx.send("❌ ไม่สามารถยกเลิกโหลด Owner cog ได้!")
                         return
                     await self.bot.unload_extension(f"cogs.{cog_name}")
-                    await ctx.send(f"✅ Unloaded cog: `{cog_name}`")
+                    await ctx.send(f"✅ ยกเลิกโหลด cog: `{cog_name}`")
             except Exception as e:
-                await ctx.send(f"❌ Failed to {action} `{cog_name}`: {e}")
+                await ctx.send(f"❌ ไม่สามารถ {action} `{cog_name}`: {e}")
             return
 
         if action == "cogs":
             cogs = list(self.bot.cogs.keys())
             if cogs:
-                embed = discord.Embed(title="📦 Loaded Cogs", description="\n".join(f"• `{cog}`" for cog in sorted(cogs)), color=discord.Color.blue())
+                embed = discord.Embed(title="📦 Cogs ที่โหลดอยู่", description="\n".join(f"• `{cog}`" for cog in sorted(cogs)), color=discord.Color.blue())
                 await ctx.send(embed=embed)
             else:
-                await ctx.send("❌ No cogs are currently loaded.")
+                await ctx.send("❌ ไม่มี cogs ที่โหลดอยู่")
             return
 
         if action in ("shutdown", "stop"):
-            await ctx.send("🛑 Shutting down bot...")
+            await ctx.send("🛑 กำลังปิดบอท...")
             await self.bot.close()
             return
 
         if action == "restart":
-            await ctx.send("🔄 Restarting bot...")
+            await ctx.send("🔄 กำลังรีสตาร์ทบอท...")
             await self.bot.close()
             os.execv(sys.executable, [sys.executable] + sys.argv)
 
-        await ctx.send("❌ Unknown action. Use `!bot help` for usage.")
+        await ctx.send("❌ ไม่รู้จักคำสั่ง ใช้ `!bot help` เพื่อดูวิธีใช้")
 
     @bot.error
     async def bot_error(self, ctx: commands.Context, error: commands.CommandError) -> None:
         if isinstance(error, commands.NotOwner):
-            await ctx.send("❌ Only the bot owner can use this command.")
+            await ctx.send("❌ เฉพาะเจ้าของบอทเท่านั้นที่ใช้คำสั่งนี้ได้")
         else:
-            await ctx.send(f"❌ An error occurred: {error}")
+            await ctx.send(f"❌ เกิดข้อผิดพลาด: {error}")
 
     async def bot_control_check(self, interaction: discord.Interaction) -> bool:
         owner_id = int(os.getenv("BOT_OWNER_ID", 0))
@@ -243,98 +243,98 @@ class Owner(commands.Cog):
         actions = ["restart", "shutdown", "reload", "load", "unload", "sync", "cogs", "profile", "pause", "resume"]
         return [app_commands.Choice(name=action, value=action) for action in actions if action.startswith(current.lower())]
 
-    @app_commands.command(name="botcontrol", description="Bot control panel (Owner only)")
+    @app_commands.command(name="botcontrol", description="แผงควบคุมบอท (เฉพาะเจ้าของ)")
     @app_commands.check(bot_control_check)
-    @app_commands.describe(action="The action to perform", args="Arguments for the action")
+    @app_commands.describe(action="การดำเนินการที่ต้องการทำ", args="อาร์กิวเมนต์สำหรับการดำเนินการ")
     @app_commands.autocomplete(action=action_autocomplete)
     async def botcontrol(self, interaction: discord.Interaction, action: str, args: Optional[str] = None) -> None:
         await interaction.response.defer(ephemeral=True)
         action = action.lower()
 
         if action == "restart":
-            await interaction.followup.send(embed=discord.Embed(title="🔄 Bot Restart", description="Restarting...", color=discord.Color.orange()), ephemeral=True)
+            await interaction.followup.send(embed=discord.Embed(title="🔄 รีสตาร์ทบอท", description="กำลังรีสตาร์ท...", color=discord.Color.orange()), ephemeral=True)
             await self.bot.close()
             return
 
         if action == "shutdown":
-            await interaction.followup.send(embed=discord.Embed(title="🛑 Bot Shutdown", description="Shutting down...", color=discord.Color.red()), ephemeral=True)
+            await interaction.followup.send(embed=discord.Embed(title="🛑 ปิดบอท", description="กำลังปิด...", color=discord.Color.red()), ephemeral=True)
             await self.bot.close()
             return
 
         if action == "reload":
             if not args:
-                await interaction.followup.send("❌ Please provide a cog name.", ephemeral=True)
+                await interaction.followup.send("❌ กรุณาระบุชื่อ cog", ephemeral=True)
                 return
             try:
                 await self.bot.unload_extension(f"cogs.{args}")
                 await self.bot.load_extension(f"cogs.{args}")
-                await interaction.followup.send(embed=discord.Embed(title="✅ Cog Reloaded", description=f"`{args}`", color=discord.Color.green()), ephemeral=True)
+                await interaction.followup.send(embed=discord.Embed(title="✅ โหลด Cog ซ้ำ", description=f"`{args}`", color=discord.Color.green()), ephemeral=True)
             except Exception as e:
-                await interaction.followup.send(embed=discord.Embed(title="❌ Failed", description=str(e), color=discord.Color.red()), ephemeral=True)
+                await interaction.followup.send(embed=discord.Embed(title="❌ ล้มเหลว", description=str(e), color=discord.Color.red()), ephemeral=True)
             return
 
         if action == "load":
             if not args:
-                await interaction.followup.send("❌ Please provide a cog name.", ephemeral=True)
+                await interaction.followup.send("❌ กรุณาระบุชื่อ cog", ephemeral=True)
                 return
             try:
                 await self.bot.load_extension(f"cogs.{args}")
-                await interaction.followup.send(embed=discord.Embed(title="✅ Cog Loaded", description=f"`{args}`", color=discord.Color.green()), ephemeral=True)
+                await interaction.followup.send(embed=discord.Embed(title="✅ โหลด Cog", description=f"`{args}`", color=discord.Color.green()), ephemeral=True)
             except Exception as e:
-                await interaction.followup.send(embed=discord.Embed(title="❌ Failed", description=str(e), color=discord.Color.red()), ephemeral=True)
+                await interaction.followup.send(embed=discord.Embed(title="❌ ล้มเหลว", description=str(e), color=discord.Color.red()), ephemeral=True)
             return
 
         if action == "unload":
             if not args:
-                await interaction.followup.send("❌ Please provide a cog name.", ephemeral=True)
+                await interaction.followup.send("❌ กรุณาระบุชื่อ cog", ephemeral=True)
                 return
             if args.lower() == "owner":
-                await interaction.followup.send("❌ Cannot unload the Owner cog!", ephemeral=True)
+                await interaction.followup.send("❌ ไม่สามารถยกเลิกโหลด Owner cog ได้!", ephemeral=True)
                 return
             try:
                 await self.bot.unload_extension(f"cogs.{args}")
-                await interaction.followup.send(embed=discord.Embed(title="✅ Cog Unloaded", description=f"`{args}`", color=discord.Color.green()), ephemeral=True)
+                await interaction.followup.send(embed=discord.Embed(title="✅ ยกเลิกโหลด Cog", description=f"`{args}`", color=discord.Color.green()), ephemeral=True)
             except Exception as e:
-                await interaction.followup.send(embed=discord.Embed(title="❌ Failed", description=str(e), color=discord.Color.red()), ephemeral=True)
+                await interaction.followup.send(embed=discord.Embed(title="❌ ล้มเหลว", description=str(e), color=discord.Color.red()), ephemeral=True)
             return
 
         if action == "sync":
             try:
                 synced = await self.bot.tree.sync()
-                await interaction.followup.send(embed=discord.Embed(title="✅ Synced", description=f"{len(synced)} commands", color=discord.Color.green()), ephemeral=True)
+                await interaction.followup.send(embed=discord.Embed(title="✅ ซิงค์แล้ว", description=f"{len(synced)} คำสั่ง", color=discord.Color.green()), ephemeral=True)
             except Exception as e:
-                await interaction.followup.send(embed=discord.Embed(title="❌ Failed", description=str(e), color=discord.Color.red()), ephemeral=True)
+                await interaction.followup.send(embed=discord.Embed(title="❌ ล้มเหลว", description=str(e), color=discord.Color.red()), ephemeral=True)
             return
 
         if action == "cogs":
             cogs = list(self.bot.cogs.keys())
-            embed = discord.Embed(title="📦 Loaded Cogs", description="\n".join(f"• `{cog}`" for cog in sorted(cogs)), color=discord.Color.blue())
+            embed = discord.Embed(title="📦 Cogs ที่โหลดอยู่", description="\n".join(f"• `{cog}`" for cog in sorted(cogs)), color=discord.Color.blue())
             await interaction.followup.send(embed=embed, ephemeral=True)
             return
 
         if action == "profile":
             user = self.bot.user
-            embed = discord.Embed(title="🤖 Bot Profile", color=discord.Color.blue())
+            embed = discord.Embed(title="🤖 โปรไฟล์บอท", color=discord.Color.blue())
             embed.set_thumbnail(url=user.display_avatar.url)
             if user.banner:
                 embed.set_image(url=user.banner.url)
-            embed.add_field(name="Username", value=user.name, inline=True)
+            embed.add_field(name="ชื่อผู้ใช้", value=user.name, inline=True)
             embed.add_field(name="ID", value=user.id, inline=True)
-            embed.add_field(name="Servers", value=len(self.bot.guilds), inline=True)
+            embed.add_field(name="เซิร์ฟเวอร์", value=len(self.bot.guilds), inline=True)
             await interaction.followup.send(embed=embed, ephemeral=True)
             return
 
         if action == "pause":
             self.cycle_paused = True
-            await interaction.followup.send(embed=discord.Embed(title="⏸️ Paused", description="Status cycling paused", color=discord.Color.orange()), ephemeral=True)
+            await interaction.followup.send(embed=discord.Embed(title="⏸️ หยุดแล้ว", description="หยุดหมุนสถานะแล้ว", color=discord.Color.orange()), ephemeral=True)
             return
 
         if action == "resume":
             self.cycle_paused = False
-            await interaction.followup.send(embed=discord.Embed(title="▶️ Resumed", description="Status cycling resumed", color=discord.Color.green()), ephemeral=True)
+            await interaction.followup.send(embed=discord.Embed(title="▶️ กลับมาแล้ว", description="หมุนสถานะกลับมาทำงานแล้ว", color=discord.Color.green()), ephemeral=True)
             return
 
-        await interaction.followup.send(f"❌ Unknown action: `{action}`", ephemeral=True)
+        await interaction.followup.send(f"❌ ไม่รู้จักการดำเนินการ: `{action}`", ephemeral=True)
 
 
 async def setup(bot):

@@ -1,10 +1,11 @@
-"""Advanced logging system with different log levels and formatting"""
+"""ระบบบันทึกขั้นสูงพร้อมระดับการบันทึกและการจัดรูปแบบที่แตกต่างกัน"""
 import logging
 from datetime import datetime
 from typing import Any, Optional
 
 
 class LogLevel:
+    """ระดับการบันทึกแบบกำหนดเอง"""
     VERBOSE: int = 5
     DEBUG: int = 10
     INFO: int = 20
@@ -17,7 +18,10 @@ logging.addLevelName(LogLevel.VERBOSE, "VERBOSE")
 
 
 class ContextLogger(logging.Logger):
+    """Logger ที่รองรับระดับ VERBOSE"""
+
     def verbose(self, message: str, *args: Any, **kwargs: Any) -> None:
+        """บันทึกข้อความระดับ VERBOSE"""
         if self.isEnabledFor(LogLevel.VERBOSE):
             self._log(LogLevel.VERBOSE, message, args, **kwargs)
 
@@ -26,6 +30,7 @@ logging.setLoggerClass(ContextLogger)
 
 
 class AdvancedFormatter(logging.Formatter):
+    """จัดรูปแบบบันทึกพร้อมสีสันและอิโมจิ"""
     COLORS: dict[int, str] = {
         LogLevel.VERBOSE: "\033[36m",
         LogLevel.DEBUG: "\033[34m",
@@ -46,6 +51,7 @@ class AdvancedFormatter(logging.Formatter):
     }
 
     def format(self, record: logging.LogRecord) -> str:
+        """จัดรูปแบบบันทึกพร้อมบริบท"""
         emoji = self.EMOJIS.get(record.levelno, "•")
         level = record.levelname
         msg = f"{emoji} [{level}] {record.getMessage()}"
@@ -55,19 +61,19 @@ class AdvancedFormatter(logging.Formatter):
 
         user = getattr(record, "user", None)
         if user:
-            context_parts.append(f"User: {user}")
+            context_parts.append(f"ผู้ใช้: {user}")
 
         command = getattr(record, "command", None)
         if command:
-            context_parts.append(f"Command: {command}")
+            context_parts.append(f"คำสั่ง: {command}")
 
         channel = getattr(record, "channel", None)
         if channel:
-            context_parts.append(f"Channel: {channel}")
+            context_parts.append(f"ช่อง: {channel}")
 
         guild = getattr(record, "guild", None)
         if guild:
-            context_parts.append(f"Guild: {guild}")
+            context_parts.append(f"เซิร์ฟเวอร์: {guild}")
 
         formatted = f"[{timestamp}] {msg}"
         if context_parts:
@@ -77,6 +83,7 @@ class AdvancedFormatter(logging.Formatter):
 
 
 def setup_advanced_logger(name: str = "entrophy", level: int = LogLevel.VERBOSE) -> logging.Logger:
+    """ตั้งค่าและคืนค่า logger หลักของระบบ"""
     logger = logging.getLogger(name)
     logger.setLevel(level)
     logger.handlers = []
@@ -100,14 +107,15 @@ def log_command_execution(
     args: str = "",
     success: bool = True,
 ) -> None:
-    status = "✅ SUCCESS" if success else "❌ FAILED"
+    """บันทึกการเรียกใช้คำสั่ง"""
+    status = "✅ สำเร็จ" if success else "❌ ล้มเหลว"
     if interaction_type == "slash":
-        log_msg = f"Slash command executed: /{command_name}"
+        log_msg = f"คำสั่ง Slash ถูกเรียกใช้: /{command_name}"
     else:
-        log_msg = f"Prefix command executed: {command_name}"
+        log_msg = f"คำสั่ง Prefix ถูกเรียกใช้: {command_name}"
 
     if args:
-        log_msg += f" [Args: {args}]"
+        log_msg += f" [อาร์กิวเมนต์: {args}]"
     log_msg += f" [{status}]"
 
     extra = {"user": user, "command": command_name, "channel": channel, "guild": guild}
@@ -124,12 +132,13 @@ def log_error(
     guild: Any = None,
     exc_info: bool = False,
 ) -> None:
+    """บันทึกข้อผิดพลาด"""
     extra: dict[str, Any] = {"user": user, "command": command, "channel": channel, "guild": guild}
 
     if exc_info:
-        logger.exception(f"Error [{error_type}]: {error_msg}", extra=extra)
+        logger.exception(f"ข้อผิดพลาด [{error_type}]: {error_msg}", extra=extra)
     else:
-        logger.error(f"Error [{error_type}]: {error_msg}", extra=extra)
+        logger.error(f"ข้อผิดพลาด [{error_type}]: {error_msg}", extra=extra)
 
 
 def log_user_action(
@@ -140,7 +149,8 @@ def log_user_action(
     channel: Any = None,
     details: str = "",
 ) -> None:
-    msg = f"User action [{action}]"
+    """บันทึกการกระทำของผู้ใช้"""
+    msg = f"การกระทำผู้ใช้ [{action}]"
     if details:
         msg += f": {details}"
 
@@ -156,7 +166,8 @@ def log_event(
     guild: Any = None,
     channel: Any = None,
 ) -> None:
-    msg = f"Event: {event_name}"
+    """บันทึกเหตุการณ์"""
+    msg = f"เหตุการณ์: {event_name}"
     if details:
         msg += f" - {details}"
 
